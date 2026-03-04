@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}Points de Collecte — CollecteOpt{% endblock %}
+
+{% block content %}
+<div class="container-fluid page-content">
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="fw-bold mb-1"><i class="bi bi-geo-alt text-primary me-2"></i>Points de Collecte</h2>
+      <p class="text-muted mb-0">Gestion des conteneurs et bacs de collecte</p>
+    </div>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalPoint">
+      <i class="bi bi-plus-lg me-1"></i>Ajouter Point
+    </button>
+  </div>
+
+  <!-- Gérer les zones (désactiver = supprimer de la liste) -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-header py-2 small fw-semibold"><i class="bi bi-map me-1"></i>Zones actives</div>
+    <div class="card-body py-2" id="zonesList">
+      <div class="text-muted small">Chargement…</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2">
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filtrePriorite" onchange="loadPoints()">
+            <option value="">Toutes priorités</option>
+            <option value="3">Urgente</option>
+            <option value="2">Normale</option>
+            <option value="1">Faible</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filtreZone" onchange="loadPoints()">
+            <option value="">Toutes zones</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filtreType" onchange="loadPoints()">
+            <option value="">Tous types</option>
+            <option value="menager">Ménager</option>
+            <option value="recyclable">Recyclable</option>
+            <option value="encombrant">Encombrant</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <div class="form-check form-switch mt-1">
+            <input class="form-check-input" type="checkbox" id="filtreUrgent" onchange="loadPoints()">
+            <label class="form-check-label small">Urgents seulement</label>
+          </div>
+        </div>
+        <div class="col-auto ms-auto">
+          <span class="text-muted small" id="pointCount">-- points</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Points Table -->
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Nom</th><th>Zone</th><th>Type</th>
+              <th>Taux Remplissage</th><th>Capacité</th>
+              <th>Priorité</th><th>Dernière Collecte</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pointsBody">
+            <tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ajout Point -->
+<div class="modal fade" id="modalPoint" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Ajouter Point de Collecte</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Nom *</label>
+          <input type="text" class="form-control" id="ptNom" placeholder="ex: Bac Rue Hassan II">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Adresse</label>
+          <input type="text" class="form-control" id="ptAdresse">
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <label class="form-label">Latitude *</label>
+            <input type="number" class="form-control" id="ptLat" placeholder="30.4278" step="0.0001">
+          </div>
+          <div class="col">
+            <label class="form-label">Longitude *</label>
+            <input type="number" class="form-control" id="ptLng" placeholder="-9.5981" step="0.0001">
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <label class="form-label">Zone</label>
+            <select class="form-select" id="ptZone"></select>
+          </div>
+          <div class="col">
+            <label class="form-label">Type déchet</label>
+            <select class="form-select" id="ptType">
+              <option value="menager">Ménager</option>
+              <option value="recyclable">Recyclable</option>
+              <option value="encombrant">Encombrant</option>
+            </select>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <label class="form-label">Capacité (m³)</label>
+            <input type="number" class="form-control" id="ptCap" value="1.5" step="0.5">
+          </div>
+          <div class="col">
+            <label class="form-label">Taux remplissage</label>
+            <input type="range" class="form-range mt-2" id="ptTaux" min="0" max="1" step="0.05" value="0.5" oninput="document.getElementById('ptTauxVal').textContent=Math.round(this.value*100)+'%'">
+            <small>Niveau: <span id="ptTauxVal">50%</span></small>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" onclick="addPoint()">Ajouter</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadPoints() {
+  let url = '/api/points?';
+  const priorite = document.getElementById('filtrePriorite').value;
+  const zone = document.getElementById('filtreZone').value;
+  const type = document.getElementById('filtreType').value;
+  const urgent = document.getElementById('filtreUrgent').checked;
+  if (priorite) url += `&priorite=${priorite}`;
+  if (zone) url += `&zone_id=${zone}`;
+  if (type) url += `&type_dechet=${type}`;
+  if (urgent) url += `&urgent=true`;
+
+  try {
+    const data = await API_CALL('GET', url);
+    const points = data.points || [];
+    document.getElementById('pointCount').textContent = `${points.length} points`;
+
+    document.getElementById('pointsBody').innerHTML = points.map(p => {
+      const pct = Math.round(p.taux_remplissage * 100);
+      const barColor = pct >= 80 ? 'danger' : pct >= 50 ? 'warning' : 'success';
+      const prioBadge = p.priorite === 3 ? 'danger' : p.priorite === 2 ? 'warning' : 'secondary';
+      const prioText = p.priorite === 3 ? 'Urgente' : p.priorite === 2 ? 'Normale' : 'Faible';
+      const typeBadge = p.type_dechet === 'recyclable' ? 'success' : p.type_dechet === 'encombrant' ? 'warning' : 'primary';
+      return `
+        <tr>
+          <td><strong>${p.nom}</strong><br><small class="text-muted">${p.adresse || ''}</small></td>
+          <td><span class="badge bg-secondary">${p.zone_nom || '--'}</span></td>
+          <td><span class="badge bg-${typeBadge}-subtle text-${typeBadge}">${p.type_dechet}</span></td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height:8px">
+                <div class="progress-bar bg-${barColor}" style="width:${pct}%"></div>
+              </div>
+              <small class="fw-bold text-${barColor}">${pct}%</small>
+            </div>
+          </td>
+          <td>${p.capacite_m3} m³</td>
+          <td><span class="badge bg-${prioBadge}">${prioText}</span></td>
+          <td><small>${p.derniere_collecte ? new Date(p.derniere_collecte).toLocaleDateString('fr-FR') : 'Jamais'}</small></td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="editTaux(${p.id}, ${p.taux_remplissage})" title="Modifier taux">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    if (!points.length) document.getElementById('pointsBody').innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Aucun point</td></tr>';
+  } catch (e) { TOAST('Erreur chargement', 'danger'); }
+}
+
+async function editTaux(id, current) {
+  const val = prompt(`Nouveau taux de remplissage (0-100%):`, Math.round(current*100));
+  if (val === null) return;
+  const taux = Math.min(1, Math.max(0, parseFloat(val)/100));
+  try {
+    await API_CALL('PUT', `/api/points/${id}`, { taux_remplissage: taux });
+    TOAST('Taux mis à jour', 'success');
+    loadPoints();
+  } catch (e) { TOAST('Erreur', 'danger'); }
+}
+
+async function addPoint() {
+  const nom = document.getElementById('ptNom').value.trim();
+  const lat = parseFloat(document.getElementById('ptLat').value);
+  const lng = parseFloat(document.getElementById('ptLng').value);
+  if (!nom || isNaN(lat) || isNaN(lng)) { TOAST('Nom, latitude et longitude obligatoires', 'warning'); return; }
+
+  try {
+    await API_CALL('POST', '/api/points', {
+      nom, adresse: document.getElementById('ptAdresse').value,
+      latitude: lat, longitude: lng,
+      zone_id: document.getElementById('ptZone').value || null,
+      type_dechet: document.getElementById('ptType').value,
+      capacite_m3: parseFloat(document.getElementById('ptCap').value),
+      taux_remplissage: parseFloat(document.getElementById('ptTaux').value),
+    });
+    bootstrap.Modal.getInstance(document.getElementById('modalPoint')).hide();
+    TOAST('Point ajouté', 'success');
+    loadPoints();
+  } catch (e) { TOAST(e.message, 'danger'); }
+}
+
+async function loadZones() {
+  const data = await API_CALL('GET', '/api/zones');
+  const zones = data.zones || [];
+  const sels = [document.getElementById('filtreZone'), document.getElementById('ptZone')];
+  sels.forEach(sel => {
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Toutes zones</option>';
+    zones.forEach(z => {
+      sel.innerHTML += `<option value="${z.id}">${z.nom}</option>`;
+    });
+  });
+  const listEl = document.getElementById('zonesList');
+  if (listEl) {
+    if (!zones.length) {
+      listEl.innerHTML = '<span class="text-muted small">Aucune zone active.</span>';
+    } else {
+      listEl.innerHTML = zones.map(z => `
+        <span class="d-inline-flex align-items-center gap-2 me-2 mb-1">
+          <span class="badge bg-secondary">${z.nom}</span>
+          <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" onclick="desactiverZone(${z.id}, '${z.nom.replace(/'/g, "\\'")}')" title="Désactiver cette zone">×</button>
+        </span>
+      `).join('');
+    }
+  }
+}
+
+async function desactiverZone(id, nom) {
+  if (!confirm('Désactiver la zone « ' + nom + ' » ? Elle ne s\'affichera plus dans les listes.')) return;
+  try {
+    const token = localStorage.getItem('access_token');
+    const res = await fetch('/api/zones/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      TOAST('Zone désactivée : ' + nom, 'success');
+      loadZones();
+      loadPoints();
+    } else {
+      TOAST(data.error || 'Non autorisé', 'danger');
+    }
+  } catch (e) {
+    TOAST('Erreur', 'danger');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => { loadPoints(); loadZones(); });
+</script>
+{% endblock %}

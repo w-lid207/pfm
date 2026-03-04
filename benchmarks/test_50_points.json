@@ -1,0 +1,502 @@
+[
+  {
+    "id": 1,
+    "lat": 30.41394267984579,
+    "lng": -9.627498924477734,
+    "nom": "Benne Hay Mohammadi #1 (3 bennes)",
+    "volume_total": 223.0,
+    "volume_restant": 223.0,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 2,
+    "lat": 30.439217956770484,
+    "lng": -9.62130611673706,
+    "nom": "Benne Agadir Ville #2 (3 bennes)",
+    "volume_total": 203.7,
+    "volume_restant": 203.7,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 3,
+    "lat": 30.352653596968388,
+    "lng": -9.610116234931336,
+    "nom": "Benne Cité Dakhla #3 (3 bennes)",
+    "volume_total": 392.9,
+    "volume_restant": 392.9,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 4,
+    "lat": 30.425880736712976,
+    "lng": -9.614034068362312,
+    "nom": "Benne Anza #4 (3 bennes)",
+    "volume_total": 367.9,
+    "volume_restant": 367.9,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 5,
+    "lat": 30.360221027651985,
+    "lng": -9.592007269936266,
+    "nom": "Benne Tikouine #5 (3 bennes)",
+    "volume_total": 488.8,
+    "volume_restant": 488.8,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 6,
+    "lat": 30.395942487967186,
+    "lng": -9.617517383714679,
+    "nom": "Benne Souss Massa #6 (3 bennes)",
+    "volume_total": 300.1,
+    "volume_restant": 300.1,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 7,
+    "lat": 30.407735214525676,
+    "lng": -9.559542816378507,
+    "nom": "Benne Inezgane #7 (2 bennes)",
+    "volume_total": 315.1,
+    "volume_restant": 315.1,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 8,
+    "lat": 30.435531772101513,
+    "lng": -9.543351633324473,
+    "nom": "Benne Talborjt #8 (3 bennes)",
+    "volume_total": 341.8,
+    "volume_restant": 341.8,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 9,
+    "lat": 30.385527070022754,
+    "lng": -9.56298248256223,
+    "nom": "Benne Founty #9 (2 bennes)",
+    "volume_total": 217.0,
+    "volume_restant": 217.0,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 10,
+    "lat": 30.374481092515143,
+    "lng": -9.583773978814888,
+    "nom": "Benne Charaf #10 (3 bennes)",
+    "volume_total": 478.0,
+    "volume_restant": 478.0,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 11,
+    "lat": 30.382428273441533,
+    "lng": -9.553168642240763,
+    "nom": "Benne Hay Salam #11 (2 bennes)",
+    "volume_total": 150,
+    "volume_restant": 150,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 12,
+    "lat": 30.390116478702232,
+    "lng": -9.623381139478846,
+    "nom": "Benne Nouveau Quartier #12 (3 bennes)",
+    "volume_total": 389.5,
+    "volume_restant": 389.5,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 13,
+    "lat": 30.39588518525874,
+    "lng": -9.603511983350195,
+    "nom": "Benne Ben Sergao #13 (2 bennes)",
+    "volume_total": 292.6,
+    "volume_restant": 292.6,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 14,
+    "lat": 30.408458599022353,
+    "lng": -9.540217711639752,
+    "nom": "Benne Dcheira #14 (3 bennes)",
+    "volume_total": 374.6,
+    "volume_restant": 374.6,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 15,
+    "lat": 30.35909094121738,
+    "lng": -9.625288362457527,
+    "nom": "Benne Aourir #15 (2 bennes)",
+    "volume_total": 150,
+    "volume_restant": 150,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 16,
+    "lat": 30.39221599667997,
+    "lng": -9.623647229384805,
+    "nom": "Benne Tamaris #16 (3 bennes)",
+    "volume_total": 347.3,
+    "volume_restant": 347.3,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 17,
+    "lat": 30.43607797022345,
+    "lng": -9.628851897805719,
+    "nom": "Benne Hay Mohammadi #17 (2 bennes)",
+    "volume_total": 282.8,
+    "volume_restant": 282.8,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 18,
+    "lat": 30.426859873265744,
+    "lng": -9.595982452696896,
+    "nom": "Benne Agadir Ville #18 (3 bennes)",
+    "volume_total": 426.3,
+    "volume_restant": 426.3,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 19,
+    "lat": 30.37633890507511,
+    "lng": -9.57994138869497,
+    "nom": "Benne Cité Dakhla #19 (2 bennes)",
+    "volume_total": 192.1,
+    "volume_restant": 192.1,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 20,
+    "lat": 30.379844479144865,
+    "lng": -9.5661050505134,
+    "nom": "Benne Anza #20 (2 bennes)",
+    "volume_total": 237.3,
+    "volume_restant": 237.3,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 21,
+    "lat": 30.44534997476535,
+    "lng": -9.537756591938171,
+    "nom": "Benne Tikouine #21 (2 bennes)",
+    "volume_total": 263.1,
+    "volume_restant": 263.1,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 22,
+    "lat": 30.44290986162646,
+    "lng": -9.54212781221768,
+    "nom": "Benne Souss Massa #22 (3 bennes)",
+    "volume_total": 307.2,
+    "volume_restant": 307.2,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 23,
+    "lat": 30.358565345206788,
+    "lng": -9.58140095366834,
+    "nom": "Benne Inezgane #23 (2 bennes)",
+    "volume_total": 326.6,
+    "volume_restant": 326.6,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 24,
+    "lat": 30.36283914644998,
+    "lng": -9.582471762190128,
+    "nom": "Benne Talborjt #24 (2 bennes)",
+    "volume_total": 270.6,
+    "volume_restant": 270.6,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 25,
+    "lat": 30.446436290600744,
+    "lng": -9.537108650699782,
+    "nom": "Benne Founty #25 (2 bennes)",
+    "volume_total": 266.8,
+    "volume_restant": 266.8,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 26,
+    "lat": 30.414987805763946,
+    "lng": -9.58618999160855,
+    "nom": "Benne Charaf #26 (3 bennes)",
+    "volume_total": 252.6,
+    "volume_restant": 252.6,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 27,
+    "lat": 30.40539215224245,
+    "lng": -9.571155988558965,
+    "nom": "Benne Hay Salam #27 (2 bennes)",
+    "volume_total": 205.3,
+    "volume_restant": 205.3,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 28,
+    "lat": 30.356740032811032,
+    "lng": -9.6268587041947,
+    "nom": "Benne Nouveau Quartier #28 (3 bennes)",
+    "volume_total": 296.7,
+    "volume_restant": 296.7,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 29,
+    "lat": 30.403923393139475,
+    "lng": -9.557664743411904,
+    "nom": "Benne Ben Sergao #29 (3 bennes)",
+    "volume_total": 318.5,
+    "volume_restant": 318.5,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 30,
+    "lat": 30.359693081422883,
+    "lng": -9.586894881759362,
+    "nom": "Benne Dcheira #30 (3 bennes)",
+    "volume_total": 349.4,
+    "volume_restant": 349.4,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 31,
+    "lat": 30.448416521136597,
+    "lng": -9.620158212884805,
+    "nom": "Benne Aourir #31 (3 bennes)",
+    "volume_total": 395.7,
+    "volume_restant": 395.7,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 32,
+    "lat": 30.369020890844084,
+    "lng": -9.585138645216688,
+    "nom": "Benne Tamaris #32 (3 bennes)",
+    "volume_total": 378.1,
+    "volume_restant": 378.1,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 33,
+    "lat": 30.394313074505344,
+    "lng": -9.543865089523816,
+    "nom": "Benne Hay Mohammadi #33 (2 bennes)",
+    "volume_total": 257.5,
+    "volume_restant": 257.5,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 34,
+    "lat": 30.446899625728474,
+    "lng": -9.537363301699187,
+    "nom": "Benne Agadir Ville #34 (2 bennes)",
+    "volume_total": 197.8,
+    "volume_restant": 197.8,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 35,
+    "lat": 30.43646503940302,
+    "lng": -9.539755713448944,
+    "nom": "Benne Cité Dakhla #35 (2 bennes)",
+    "volume_total": 304.6,
+    "volume_restant": 304.6,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 36,
+    "lat": 30.442651807355933,
+    "lng": -9.551487064320588,
+    "nom": "Benne Anza #36 (3 bennes)",
+    "volume_total": 506.4,
+    "volume_restant": 506.4,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 37,
+    "lat": 30.416187131195073,
+    "lng": -9.581332858834568,
+    "nom": "Benne Tikouine #37 (2 bennes)",
+    "volume_total": 289.8,
+    "volume_restant": 289.8,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 38,
+    "lat": 30.423573717878906,
+    "lng": -9.62390424285235,
+    "nom": "Benne Souss Massa #38 (3 bennes)",
+    "volume_total": 321.6,
+    "volume_restant": 321.6,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 39,
+    "lat": 30.36574327279395,
+    "lng": -9.533922109672554,
+    "nom": "Benne Inezgane #39 (2 bennes)",
+    "volume_total": 238.0,
+    "volume_restant": 238.0,
+    "priorite": 1,
+    "zone_id": null
+  },
+  {
+    "id": 40,
+    "lat": 30.41752125536041,
+    "lng": -9.606479610499907,
+    "nom": "Benne Talborjt #40 (2 bennes)",
+    "volume_total": 326.7,
+    "volume_restant": 326.7,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 41,
+    "lat": 30.409451915353344,
+    "lng": -9.56806184896679,
+    "nom": "Benne Founty #41 (3 bennes)",
+    "volume_total": 380.8,
+    "volume_restant": 380.8,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 42,
+    "lat": 30.370425919942356,
+    "lng": -9.558380819921059,
+    "nom": "Benne Charaf #42 (2 bennes)",
+    "volume_total": 159.5,
+    "volume_restant": 159.5,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 43,
+    "lat": 30.379999707979877,
+    "lng": -9.598382280372816,
+    "nom": "Benne Hay Salam #43 (2 bennes)",
+    "volume_total": 194.6,
+    "volume_restant": 194.6,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 44,
+    "lat": 30.449609644785507,
+    "lng": -9.622673927890038,
+    "nom": "Benne Nouveau Quartier #44 (2 bennes)",
+    "volume_total": 195.8,
+    "volume_restant": 195.8,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 45,
+    "lat": 30.438086417368645,
+    "lng": -9.542072975751545,
+    "nom": "Benne Ben Sergao #45 (3 bennes)",
+    "volume_total": 340.0,
+    "volume_restant": 340.0,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 46,
+    "lat": 30.411167776572594,
+    "lng": -9.53127669363685,
+    "nom": "Benne Dcheira #46 (2 bennes)",
+    "volume_total": 283.4,
+    "volume_restant": 283.4,
+    "priorite": 3,
+    "zone_id": null
+  },
+  {
+    "id": 47,
+    "lat": 30.360358650191824,
+    "lng": -9.54218730350264,
+    "nom": "Benne Aourir #47 (3 bennes)",
+    "volume_total": 266.4,
+    "volume_restant": 266.4,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 48,
+    "lat": 30.37817562714579,
+    "lng": -9.608937034519306,
+    "nom": "Benne Tamaris #48 (3 bennes)",
+    "volume_total": 315.3,
+    "volume_restant": 315.3,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 49,
+    "lat": 30.37511212520699,
+    "lng": -9.539184095378141,
+    "nom": "Benne Hay Mohammadi #49 (2 bennes)",
+    "volume_total": 177.4,
+    "volume_restant": 177.4,
+    "priorite": 2,
+    "zone_id": null
+  },
+  {
+    "id": 50,
+    "lat": 30.354408676179908,
+    "lng": -9.596644346139492,
+    "nom": "Benne Agadir Ville #50 (2 bennes)",
+    "volume_total": 234.9,
+    "volume_restant": 234.9,
+    "priorite": 3,
+    "zone_id": null
+  }
+]

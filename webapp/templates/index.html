@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte — CollecteOpt</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="page-layout">
+        <!-- ═══ SIDEBAR ═══ -->
+        <nav class="nav-sidebar" id="mainSidebar">
+            <div class="nav-brand">
+                <div>
+                    <h1>🚛 <span>CollecteOpt</span></h1>
+                    <p>Gestion intelligente de collecte</p>
+                </div>
+                <button class="collapse-btn" onclick="toggleSidebar()" title="Réduire">☰</button>
+            </div>
+
+            <!-- Mini Dashboard -->
+            <div class="mini-dashboard">
+                <div class="mini-dash-grid">
+                    <div class="mini-dash-item active-item">
+                        <div class="mini-dash-value" id="miniTrucks">0</div>
+                        <div class="mini-dash-label">Camions</div>
+                    </div>
+                    <div class="mini-dash-item urgent">
+                        <div class="mini-dash-value" id="miniUrgent">0</div>
+                        <div class="mini-dash-label">Points urgents</div>
+                    </div>
+                    <div class="mini-dash-item">
+                        <div class="mini-dash-value" id="miniFill">0%</div>
+                        <div class="mini-dash-label">Remplissage moy.</div>
+                    </div>
+                    <div class="mini-dash-item">
+                        <div class="mini-dash-value" id="miniCO2">--</div>
+                        <div class="mini-dash-label">CO₂ estimé</div>
+                        <div class="mini-dash-sub">kg</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="nav-search">
+                <div class="nav-search-wrapper">
+                    <input type="text" placeholder="Rechercher..." oninput="filterSidebarNav(this.value)">
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="nav-links">
+                <div class="sidebar-section-title">Navigation</div>
+                <a href="/dashboard" class="nav-link">
+                    <span class="icon">📊</span><span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/carte" class="nav-link active">
+                    <span class="icon">🗺️</span><span class="nav-text">Carte & Simulation</span>
+                </a>
+
+                <div class="sidebar-section-title">Système</div>
+                <a href="#" class="nav-link" onclick="openAlertsPanel(); return false;">
+                    <span class="icon">⚠️</span><span class="nav-text">Alertes</span>
+                    <span class="nav-alert-badge" id="navAlertBadge" data-count="0">0</span>
+                </a>
+
+            </div>
+
+            <div class="nav-footer">
+                <a href="/logout" class="nav-link">
+                    <span class="icon">🚪</span><span class="nav-text">Déconnexion</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- ═══ MAIN ═══ -->
+        <div class="page-main">
+            <div class="page-header">
+                <h2>🗺️ Carte Interactive</h2>
+                <div class="badge">
+                    <div class="dot"></div> Admin connecté
+                </div>
+            </div>
+
+            <div class="carte-body">
+                <!-- MAP -->
+                <div class="carte-map">
+                    <div id="map"></div>
+                    <div class="map-legend">
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#2563EB"></div> Dépôt
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#16A34A"></div> Point (&lt; 50%)
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#EA580C"></div> Point (50-80%)
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#DC2626"></div> Point plein (&gt; 80%)
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#7C3AED"></div> Décharge
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT PANEL -->
+                <div class="carte-panel" style="display:flex; flex-direction:column; padding:0; overflow:hidden;">
+                    <!-- Tabs Header -->
+                    <div class="panel-tabs"
+                        style="display:flex; border-bottom:1px solid var(--border-light); background:#f8fafc; min-height:48px;">
+                        <button class="tab-btn active" id="btnTabConfig" onclick="switchTab('config')"
+                            style="flex:1; padding:12px; border:none; background:transparent; font-weight:600; cursor:pointer; color:var(--accent-blue); border-bottom:2px solid var(--accent-blue);">⚙️
+                            Configuration</button>
+                        <button class="tab-btn" id="btnTabSim" onclick="switchTab('sim')"
+                            style="flex:1; padding:12px; border:none; background:transparent; font-weight:600; cursor:pointer; color:var(--text-muted); border-bottom:2px solid transparent;">▶️
+                            Simulation</button>
+                    </div>
+
+                    <!-- Configuration Tab -->
+                    <div id="tab-config" class="tab-content"
+                        style="flex:1; overflow-y:auto; padding:20px; display:block;">
+                        <!-- Search -->
+                        <div class="section-title"><span class="icon">🔍</span> Recherche</div>
+                        <div style="display:flex;gap:4px;margin-bottom:14px">
+                            <input type="text" class="form-input" id="citySearch" placeholder="Agadir, Casablanca...">
+                            <button class="btn btn-primary btn-sm" style="width:auto;padding:8px 12px"
+                                onclick="searchCity()">Go</button>
+                        </div>
+
+                        <!-- Mode -->
+                        <div class="section-title"
+                            style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span class="icon">📌</span> Mode de placement</span>
+                        </div>
+                        <div class="mode-group">
+                            <button class="mode-btn active" data-mode="depot" onclick="setMode('depot')">🏭
+                                Dépôt</button>
+                            <button class="mode-btn" data-mode="point" onclick="setMode('point')">📍 Points</button>
+                            <button class="mode-btn" data-mode="landfill" onclick="setMode('landfill')">🏗️
+                                Décharge</button>
+                        </div>
+                        <div id="depotInfo" style="margin-bottom:6px">
+                            <span class="tag tag-orange">⊘ Non placé</span>
+                        </div>
+                        <div id="landfillInfo" style="margin-bottom:12px">
+                            <span class="tag tag-green">✓ Par défaut</span>
+                        </div>
+
+                        <!-- Points list -->
+                        <div class="section-title"><span class="icon">📦</span> Points de collecte <span
+                                style="background:rgba(0,0,0,.06);padding:1px 6px;border-radius:4px;font-size:10px;margin-left:auto"
+                                id="pointCount">0</span></div>
+                        <div id="pointsList" style="margin-bottom:14px;max-height:180px;overflow-y:auto">
+                            <div style="font-size:11px;color:var(--text-muted);padding:6px">Aucun point ajouté</div>
+                        </div>
+
+                        <!-- Zones -->
+                        <div class="section-title"><span class="icon">🗂️</span> Zones</div>
+                        <div style="display:flex;gap:4px;margin-bottom:4px">
+                            <input type="text" class="form-input" id="zoneNameInput" placeholder="Zone Nord"
+                                style="font-size:12px">
+                        </div>
+                        <div style="display:flex;gap:4px;margin-bottom:4px">
+                            <input type="text" class="form-input" id="zonePointsInput" placeholder="Points: 1, 2, 3"
+                                style="font-size:12px">
+                            <input type="text" class="form-input" id="zoneColorInput" placeholder="#2563EB"
+                                style="width:80px;font-size:12px">
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="addZone()" style="margin-bottom:6px">+ Ajouter
+                            Zone</button>
+                        <div id="zonesList" style="margin-bottom:14px">
+                            <div style="font-size:11px;color:var(--text-muted);padding:6px">Aucune zone</div>
+                        </div>
+
+                        <!-- Camions -->
+                        <div class="section-title"><span class="icon">🚛</span> Camions</div>
+                        <div style="display:flex;gap:4px;margin-bottom:6px">
+                            <input type="number" class="form-input" id="camionCapInput" placeholder="Cap. (kg)"
+                                value="5000" style="font-size:11px;width:70px">
+                            <input type="number" class="form-input" id="camionCostInput" placeholder="Coût/km"
+                                value="200" style="font-size:11px;width:60px">
+                            <button class="btn btn-outline btn-sm" style="flex:1;white-space:nowrap"
+                                onclick="addCamion()">+ Ajouter Camion</button>
+                        </div>
+                        <div id="camionsList" style="margin-bottom:6px;max-height:150px;overflow-y:auto;"></div>
+                        <!-- Actions -->
+                        <button class="btn btn-primary" id="optimizeBtn" onclick="runOptimization()">🚀 Lancer
+                            l'Optimisation</button>
+
+                    </div>
+
+                    <!-- Simulation Tab -->
+                    <div id="tab-sim" class="tab-content" style="flex:1; overflow-y:auto; padding:0; display:none;">
+                        <div class="sim-actions"
+                            style="display:flex; gap:6px; padding:12px 20px; background:#fff; border-bottom:1px solid var(--border-light);">
+                            <button class="btn btn-primary btn-sm" style="width:auto"
+                                onclick="startAdvancedSimulation()">▶ Démarrer</button>
+                            <button class="btn btn-outline btn-sm" style="width:auto"
+                                onclick="pauseAdvancedSimulation()">⏸ Pause</button>
+                            <button class="btn btn-outline btn-sm" style="width:auto"
+                                onclick="stopAdvancedSimulation()">⏹ Arrêter</button>
+                            <div class="speed-control"
+                                style="display:flex; align-items:center; gap:6px; margin-left:auto; font-size:12px; color:var(--text-secondary);">
+                                <label>Vitesse:</label>
+                                <select id="speedSelect" onchange="changeSimSpeed()">
+                                    <option value="80">0.5x</option>
+                                    <option value="40" selected>1x</option>
+                                    <option value="20">2x</option>
+                                    <option value="10">4x</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="sim-panel-section"
+                            style="padding:14px 16px; border-bottom:1px solid var(--border-light);">
+                            <div class="section-title"><span class="icon">🚛</span> Camions</div>
+                            <div id="advTruckStatuses">
+                                <div style="font-size:12px;color:var(--text-muted);padding:10px">
+                                    Lancez une optimisation depuis l'onglet Configuration d'abord.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sim-panel-section"
+                            style="padding:14px 16px; border-bottom:1px solid var(--border-light);">
+                            <div class="section-title"><span class="icon">🏗️</span> Décharge</div>
+                            <div id="advLandfillStatus">
+                                <div class="stat" style="font-size:12px">Camions passés: <b id="advLandfillVisits">0</b>
+                                </div>
+                                <div class="stat" style="font-size:12px">Total déchargé: <b id="advLandfillTotal">0</b>
+                                    kg</div>
+                            </div>
+                        </div>
+
+                        <div class="sim-panel-section"
+                            style="padding:14px 16px; border-bottom:1px solid var(--border-light);">
+                            <div class="section-title">
+                                <span class="icon">🔔</span> Alertes
+                                <span class="alert-badge-inline" id="advAlertBadge"
+                                    style="background:var(--accent-red); color:#fff; font-size:10px; font-weight:700; min-width:18px; height:18px; line-height:18px; text-align:center; border-radius:10px; padding:0 5px; display:inline-block; margin-left:auto;">0</span>
+                            </div>
+                            <div id="advAlertsList" style="max-height:220px; overflow-y:auto;">
+                                <div style="font-size:11px;color:var(--text-muted);padding:6px">Aucune alerte</div>
+                            </div>
+                        </div>
+
+                        <div class="sim-panel-section sim-summary" style="padding:14px 16px;">
+                            <div class="section-title" style="margin-bottom:8px"><span class="icon">📊</span> Résumé
+                            </div>
+                            <div class="stat" style="font-size:12px; margin:4px 0;">Pas: <b id="advSimStep">0</b></div>
+                            <div class="stat" style="font-size:12px; margin:4px 0;">Terminés: <b id="advSimDone">0</b> /
+                                <b id="advSimTotal">0</b>
+                            </div>
+                            <div class="stat" style="font-size:12px; margin:4px 0;">Collecté: <b
+                                    id="advSimCollected">0</b> kg</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ ADD POINT MODAL ═══ -->
+        <div class="modal-overlay" id="addPointModal" style="display:none">
+            <div class="modal-card">
+                <h3>📍 Nouveau point de collecte</h3>
+                <div class="form-group">
+                    <label>Nom du point</label>
+                    <input type="text" class="form-input" id="modalPointName" placeholder="Benne Rue Hassan II">
+                </div>
+                <div class="form-group">
+                    <label>Nombre de bennes</label>
+                    <select class="form-input" id="modalPointBennes" onchange="generateRandomWaste()">
+                        <option value="1">1 benne</option>
+                        <option value="2" selected>2 bennes</option>
+                        <option value="3">3 bennes</option>
+                        <option value="4">4 bennes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Volume calculé (kg)</label>
+                    <input type="number" class="form-input" id="modalPointVolume" value="350">
+                </div>
+                <input type="hidden" id="modalPointLat">
+                <input type="hidden" id="modalPointLng">
+                <div class="modal-actions">
+                    <button class="btn btn-outline" onclick="closeModal()">Annuler</button>
+                    <button class="btn btn-primary" onclick="confirmAddPoint()">Ajouter</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ ALERTS MODAL ═══ -->
+        <div class="modal-overlay" id="alertsModal" style="display:none">
+            <div class="modal-card" style="width:420px;max-height:80vh;overflow-y:auto">
+                <h3>⚠️ Centre d'Alertes</h3>
+                <div id="alertsModalContent">
+                    <div style="font-size:12px;color:var(--text-muted);padding:16px;text-align:center">
+                        Aucune alerte pour le moment.<br>Les alertes apparaîtront après l'optimisation.
+                    </div>
+                </div>
+                <div class="modal-actions" style="margin-top:12px">
+                    <button class="btn btn-outline"
+                        onclick="document.getElementById('alertsModal').style.display='none'">Fermer</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script>
+            // ── Sidebar Controls ──
+            function toggleSidebar() { document.getElementById('mainSidebar').classList.toggle('collapsed'); }
+            function filterSidebarNav(q) {
+                const links = document.querySelectorAll('.nav-sidebar .nav-link');
+                q = q.toLowerCase();
+                links.forEach(l => { l.style.display = (!q || l.textContent.toLowerCase().includes(q)) ? '' : 'none'; });
+            }
+
+            // ── Update mini dashboard when results change ──
+            function updateMiniDash() {
+                document.getElementById('miniTrucks').textContent = state.camions.length;
+                const urgent = state.points.filter(p => p.fill >= 80).length;
+                document.getElementById('miniUrgent').textContent = urgent;
+                const avgFill = state.points.length > 0
+                    ? Math.round(state.points.reduce((s, p) => s + p.fill, 0) / state.points.length)
+                    : 0;
+                document.getElementById('miniFill').textContent = avgFill + '%';
+            }
+
+            // ── Alerts Panel ──
+            function openAlertsPanel() {
+                const modal = document.getElementById('alertsModal');
+                const content = document.getElementById('alertsModalContent');
+                const alerts = [];
+
+                // Check for urgent points (fill >= 80%)
+                state.points.forEach(p => {
+                    if (p.fill >= 80) {
+                        alerts.push({ type: 'danger', icon: '🔴', title: 'Point critique', detail: `${p.name} est rempli à ${p.fill}%` });
+                    } else if (p.fill >= 60) {
+                        alerts.push({ type: 'warning', icon: '⏰', title: 'Point à surveiller', detail: `${p.name} est rempli à ${p.fill}%` });
+                    }
+                });
+
+                // Check truck count
+                if (state.camions.length === 0) {
+                    alerts.push({ type: 'warning', icon: '🚛', title: 'Aucun camion', detail: 'Ajoutez au moins un camion pour lancer l\'optimisation' });
+                }
+
+                // Check depot
+                if (!state.depot) {
+                    alerts.push({ type: 'warning', icon: '🏭', title: 'Dépôt manquant', detail: 'Placez le dépôt sur la carte' });
+                }
+
+                // Check results (pending points and shifts info)
+                if (state.results && state.results.vrp) {
+                    const pending = state.results.vrp.points_pending || [];
+                    if (pending.length > 0) {
+                        alerts.push({ type: 'danger', icon: '📦', title: `${pending.length} point(s) non collectés`, detail: 'Certains points n\'ont pas été couverts par les camions' });
+                    }
+                    const routes = state.results.vrp.routes || [];
+                    routes.forEach((r, i) => {
+                        let planningDetail = `${r.visits.length} points · ${r.distance_km} km`;
+                        if (r.planning) {
+                            planningDetail += ` · 🕒 ${r.planning.heure_depart} à ${r.planning.heure_retour}`;
+                            const duree_min = r.planning.duree_totale_min;
+                            if (duree_min > 240) {
+                                alerts.push({ type: 'warning', icon: '☕', title: `Pause obligatoire — Camion ${i + 1}`, detail: `La tournée ininterrompue dépasse 4h (${Math.floor(duree_min / 60)}h${Math.floor(duree_min % 60)}m). Pause appliquée.` });
+                            }
+                            if (r.planning.depasse_horaire) {
+                                alerts.push({ type: 'danger', icon: '⏳', title: `Dépassement horaire — Camion ${i + 1}`, detail: `La tournée se termine après la fin de service autorisée.` });
+                            }
+                        }
+                        alerts.push({ type: 'success', icon: '✅', title: `Camion ${i + 1} prêt`, detail: planningDetail });
+                    });
+                }
+
+                // Update badge
+                const badge = document.getElementById('navAlertBadge');
+                const dangerCount = alerts.filter(a => a.type === 'danger').length;
+                if (badge) { badge.textContent = dangerCount; badge.setAttribute('data-count', dangerCount); }
+
+                if (alerts.length === 0) {
+                    content.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:16px;text-align:center">Aucune alerte pour le moment.<br>Les alertes apparaîtront après l\'optimisation.</div>';
+                } else {
+                    const alertClasses = { danger: 'alert-danger', warning: 'alert-warning', success: 'alert-success' };
+                    content.innerHTML = alerts.map(a => `
+                    <div style="padding:10px 12px;border-radius:6px;border-left:3px solid ${a.type === 'danger' ? 'var(--accent-red)' : a.type === 'warning' ? 'var(--accent-orange)' : 'var(--accent-green)'};background:var(--bg-primary);margin-bottom:6px">
+                        <div style="font-size:12px;font-weight:600">${a.icon} ${a.title}</div>
+                        <div style="font-size:10px;color:var(--text-muted)">${a.detail}</div>
+                    </div>
+                `).join('');
+                }
+
+                modal.style.display = 'flex';
+            }
+
+            function switchTab(tabId) {
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.color = 'var(--text-muted)';
+                    b.style.borderBottomColor = 'transparent';
+                });
+                document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+
+                const activeBtn = document.getElementById(tabId === 'config' ? 'btnTabConfig' : 'btnTabSim');
+                if (activeBtn) {
+                    activeBtn.classList.add('active');
+                    activeBtn.style.color = 'var(--accent-blue)';
+                    activeBtn.style.borderBottomColor = 'var(--accent-blue)';
+                }
+                document.getElementById('tab-' + tabId).style.display = 'block';
+            }
+        </script>
+        <script src="/static/js/app.js"></script>
+</body>
+
+</html>

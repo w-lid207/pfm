@@ -1,0 +1,762 @@
+{% extends "base.html" %}
+{% block title %}Carte Interactive — CollecteOpt Agadir{% endblock %}
+
+{% block extra_css %}
+<style>
+  #map {
+    height: calc(100vh - 70px);
+    width: 100%;
+  }
+
+  .map-controls {
+    position: absolute;
+    top: 80px;
+    right: 15px;
+    z-index: 1000;
+    max-width: 260px;
+  }
+
+  .map-legend {
+    position: absolute;
+    bottom: 30px;
+    left: 15px;
+    z-index: 1000;
+  }
+
+  .vrp-panel {
+    position: absolute;
+    top: 80px;
+    left: 15px;
+    z-index: 1000;
+    max-width: 300px;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="position:relative">
+  <div id="map"></div>
+
+  <!-- VRP Control Panel -->
+  <div class="vrp-panel">
+    <div class="card shadow-lg border-0">
+      <div class="card-header bg-primary text-white fw-semibold py-2">
+        <i class="bi bi-cpu me-2"></i>Optimisation VRP
+      </div>
+      <div class="card-body p-3">
+        <div class="mb-2">
+          <label class="form-label form-label-sm mb-1">Nombre de camions</label>
+          <input type="number" class="form-control form-control-sm" id="numTrucks" value="3" min="1" max="6">
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm mb-1">Zone (optionnel)</label>
+          <select class="form-select form-select-sm" id="zoneSelect">
+            <option value="">Toutes les zones</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm mb-1">Type de déchet</label>
+          <select class="form-select form-select-sm" id="typeSelect" onchange="applyFilters()">
+            <option value="">Tous les types</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm mb-1 d-flex justify-content-between">
+            <span>Taux minimum à collecter</span>
+            <span><span id="tauxMinLabel">0</span>%</span>
+          </label>
+          <input type="range" class="form-range" id="tauxMinRange" min="0" max="100" step="10" value="0"
+            oninput="updateTauxMinLabel();applyFilters()">
+        </div>
+        <div class="d-grid gap-2">
+          <button class="btn btn-primary btn-sm" onclick="runVRP()">
+            <i class="bi bi-play-fill me-1"></i>Lancer Optimisation
+          </button>
+          <button class="btn btn-outline-success btn-sm" id="saveVrpBtn" onclick="saveVRP()" disabled>
+            <i class="bi bi-save me-1"></i>Sauvegarder Tournées
+          </button>
+        </div>
+        <div id="vrpResults" class="mt-2 d-none">
+          <hr class="my-2">
+          <div class="small">
+            <div class="d-flex justify-content-between"><span class="text-muted">Distance:</span><strong
+                id="vrpDist">--</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Économies:</span><strong
+                class="text-success" id="vrpSavings">--</strong></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Camions:</span><strong
+                id="vrpTrucks">--</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Simulation -->
+    <div class="card shadow-lg border-0 mt-2">
+      <div class="card-header bg-info text-white fw-semibold py-2">
+        <i class="bi bi-play-circle me-2"></i>Simulation GPS
+      </div>
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-center mb-2">
+          <div class="col-auto">
+            <label for="simRouteIndex" class="small mb-0 text-muted">Camion / route à simuler</label>
+            <select id="simRouteIndex" class="form-select form-select-sm">
+              <option value="0">Route #1</option>
+            </select>
+          </div>
+          <div class="col">
+            <div class="d-grid gap-2">
+              <button class="btn btn-info btn-sm text-white" onclick="startSimulation()">
+                <i class="bi bi-broadcast me-1"></i>Démarrer Simulation
+              </button>
+              <button class="btn btn-outline-danger btn-sm" onclick="stopSimulation()">
+                <i class="bi bi-stop-fill me-1"></i>Arrêter
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 small">
+          <div>Vitesse: <strong id="simSpeed">--</strong> km/h</div>
+          <div>Distance restante: <strong id="simRemaining">--</strong> km</div>
+          <div>Arrivée estimée: <strong id="simEta">--</strong></div>
+          <div>Progression: <strong id="simProgress">0</strong>%</div>
+          <p class="text-muted mt-2 mb-0" style="font-size:0.7rem">Le statut des camions passe à « en tournée » après <strong>Sauvegarder Tournées</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map Controls -->
+  <div class="map-controls d-flex flex-column gap-2">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-2">
+        <div class="input-group input-group-sm mb-2">
+          <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+          <input type="text" class="form-control" id="searchInput" placeholder="Rechercher un point ou une zone">
+          <button class="btn btn-outline-primary" onclick="searchOnMap()">OK</button>
+        </div>
+        <div class="btn-group-vertical w-100">
+          <button class="btn btn-light btn-sm text-start" onclick="showLayer('all')" title="Tous les points">
+            <i class="bi bi-layers me-1"></i>Tous les points
+          </button>
+          <button class="btn btn-light btn-sm text-start" onclick="showLayer('urgent')" title="Points urgents">
+            <i class="bi bi-exclamation-triangle text-danger me-1"></i>Urgents
+          </button>
+          <button class="btn btn-light btn-sm text-start" onclick="showLayer('depot')" title="Dépôt">
+            <i class="bi bi-building text-primary me-1"></i>Dépôt
+          </button>
+          <button class="btn btn-light btn-sm text-start" onclick="centerAgadir()" title="Centrer Agadir">
+            <i class="bi bi-crosshair me-1"></i>Centrer Agadir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── Carte Leaflet - Agadir ──
+  const AGADIR = [30.4278, -9.5981];
+  const map = L.map('map').setView(AGADIR, 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Légende Leaflet en haut à droite
+  const legendControl = L.control({ position: 'topright' });
+  legendControl.onAdd = function (map) {
+    const div = L.DomUtil.create('div', 'card shadow-sm border-0 p-2');
+    div.innerHTML = `
+    <div class="small fw-semibold mb-2">Légende</div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="legend-dot bg-primary"></span><small>Dépôt</small>
+    </div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="legend-dot bg-success"></span><small>Collecte normal</small>
+    </div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="legend-dot bg-warning"></span><small>Semi-plein (&gt;50%)</small>
+    </div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="legend-dot bg-danger"></span><small>Urgent (&gt;80%)</small>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="legend-dot bg-info"></span><small>Camion actif</small>
+    </div>
+  `;
+    return div;
+  };
+  legendControl.addTo(map);
+
+  // Dépôt central
+  const depotLatLng = [30.4132, -9.5889];
+  const depotMarker = L.marker(depotLatLng, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="background:#4361ee;color:white;padding:6px 8px;border-radius:8px;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,.3)"><i class="bi bi-building"></i> Dépôt</div>',
+      iconAnchor: [30, 20],
+    })
+  }).addTo(map).bindPopup('<b>Dépôt Central Agadir</b><br>Km 0 — Route de Tiznit');
+
+  // Layers
+  let pointsLayer = L.layerGroup().addTo(map);
+  let routeLayer = L.layerGroup().addTo(map);
+  let truckLayer = L.layerGroup().addTo(map);      // Camions réels (API)
+  let simTruckLayer = L.layerGroup().addTo(map);   // (couche inutilisée, conservée pour compatibilité)
+  let allPoints = [];
+  let allZones = [];
+  let vrpData = null;
+  let simInterval = null;
+  let backendSimInterval = null;
+  let followTruckImmat = null;
+  let vrpAnimationMarker = null;
+  let vrpAnimationInterval = null;
+  let simState = null;
+
+  // Couleurs par taux de remplissage
+  function getColor(taux) {
+    if (taux >= 0.8) return '#ef233c';
+    if (taux >= 0.5) return '#f4a261';
+    return '#06d6a0';
+  }
+
+  // Icône point de collecte
+  function pointIcon(taux) {
+    const color = getColor(taux);
+    const pct = Math.round(taux * 100);
+    return L.divIcon({
+      className: '',
+      html: `<div style="background:${color};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid white">${pct}%</div>`,
+      iconAnchor: [16, 16],
+    });
+  }
+
+  // Icône camion (pour les positions réelles)
+  function truckIcon(immat) {
+    return L.divIcon({
+      className: '',
+      html: `<div style="background:#0096c7;color:white;padding:4px 7px;border-radius:20px;font-size:10px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,.4)">🚛 ${immat.split('-')[1] || immat}</div>`,
+      iconAnchor: [25, 14],
+    });
+  }
+
+  // Icône camion simulé (camion rouge circulaire pour la simulation VRP)
+  function simTruckIcon(angleDeg) {
+    const rotation = angleDeg || 0;
+    return L.divIcon({
+      className: 'sim-truck-icon',
+      html: `<div style="transform:rotate(${rotation}deg);width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="11" fill="#e63946" stroke="#b71c1c"/>
+        <path d="M7 14L7 9C7 8.4 7.4 8 8 8L14 8L16 11L18 11C18.6 11 19 11.4 19 12L19 14" stroke="#fff" fill="none" stroke-width="1.5"/>
+        <circle cx="9" cy="15" r="1.5" fill="#fff" stroke="#333" stroke-width="0.5"/>
+        <circle cx="17" cy="15" r="1.5" fill="#fff" stroke="#333" stroke-width="0.5"/>
+        <line x1="9" y1="14" x2="17" y2="14" stroke="#fff" stroke-width="0.8"/>
+      </svg>
+    </div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+    });
+  }
+
+  async function loadPoints() {
+    try {
+      const data = await API_CALL('GET', '/api/points');
+      allPoints = data.points || [];
+      renderPoints(allPoints);
+
+      // Alimenter la liste des types de déchets
+      const typeSel = document.getElementById('typeSelect');
+      const types = [...new Set(allPoints.map(p => p.type_dechet).filter(Boolean))].sort();
+      types.forEach(t => {
+        typeSel.innerHTML += `<option value="${t}">${t}</option>`;
+      });
+
+      // Charger zones pour le select
+      const zonesData = await API_CALL('GET', '/api/zones');
+      allZones = zonesData.zones || [];
+      const sel = document.getElementById('zoneSelect');
+      allZones.forEach(z => {
+        sel.innerHTML += `<option value="${z.id}">${z.nom}</option>`;
+      });
+    } catch (e) { console.error(e); }
+  }
+
+  function renderPoints(points) {
+    pointsLayer.clearLayers();
+    points.forEach(p => {
+      const marker = L.marker([p.latitude, p.longitude], { icon: pointIcon(p.taux_remplissage) });
+      marker.bindPopup(`
+      <div style="min-width:180px">
+        <strong>${p.nom}</strong><br>
+        <small class="text-muted">${p.adresse || ''}</small><hr style="margin:4px 0">
+        <table style="width:100%;font-size:12px">
+          <tr><td>Type:</td><td><b>${p.type_dechet}</b></td></tr>
+          <tr><td>Taux:</td><td><b style="color:${getColor(p.taux_remplissage)}">${Math.round(p.taux_remplissage * 100)}%</b></td></tr>
+          <tr><td>Capacité:</td><td><b>${p.capacite_m3} m³</b></td></tr>
+          <tr><td>Zone:</td><td><b>${p.zone_nom || '-'}</b></td></tr>
+        </table>
+      </div>
+    `);
+      pointsLayer.addLayer(marker);
+    });
+  }
+
+  function updateTauxMinLabel() {
+    const range = document.getElementById('tauxMinRange');
+    const label = document.getElementById('tauxMinLabel');
+    if (range && label) {
+      label.textContent = range.value;
+    }
+  }
+
+  function applyFilters() {
+    const typeSel = document.getElementById('typeSelect');
+    const tauxRange = document.getElementById('tauxMinRange');
+    const selectedType = typeSel ? typeSel.value : '';
+    const minTaux = tauxRange ? (parseInt(tauxRange.value, 10) || 0) / 100 : 0;
+
+    let filtered = allPoints.slice();
+    if (selectedType) {
+      filtered = filtered.filter(p => p.type_dechet === selectedType);
+    }
+    if (minTaux > 0) {
+      filtered = filtered.filter(p => p.taux_remplissage >= minTaux);
+    }
+    renderPoints(filtered);
+  }
+
+  function showLayer(type) {
+    if (type === 'urgent') {
+      renderPoints(allPoints.filter(p => p.taux_remplissage >= 0.8));
+    } else {
+      applyFilters();
+    }
+  }
+
+  function centerAgadir() { map.setView(AGADIR, 13); }
+
+  function searchOnMap() {
+    const input = document.getElementById('searchInput');
+    if (!input) return;
+    const query = input.value.trim().toLowerCase();
+    if (!query) return;
+
+    // Chercher d'abord un point
+    const point = allPoints.find(p =>
+      (p.nom && p.nom.toLowerCase().includes(query)) ||
+      (p.adresse && p.adresse.toLowerCase().includes(query))
+    );
+    if (point) {
+      const latLng = [point.latitude, point.longitude];
+      map.setView(latLng, 16);
+      // forcer le rendu + popup
+      renderPoints(allPoints);
+      setTimeout(() => {
+        map.eachLayer(layer => {
+          if (layer.getLatLng && layer.getLatLng().lat === point.latitude && layer.getLatLng().lng === point.longitude && layer.openPopup) {
+            layer.openPopup();
+          }
+        });
+      }, 200);
+      return;
+    }
+
+    // Sinon chercher une zone
+    const zone = allZones.find(z => z.nom && z.nom.toLowerCase().includes(query));
+    if (zone && zone.centroid_lat && zone.centroid_lng) {
+      map.setView([zone.centroid_lat, zone.centroid_lng], 14);
+    } else {
+      TOAST('Aucun point ou zone trouvé pour cette recherche.', 'warning');
+    }
+  }
+
+  // ── VRP ──
+  async function runVRP() {
+    const numTrucks = parseInt(document.getElementById('numTrucks').value) || 3;
+    const zoneId = document.getElementById('zoneSelect').value;
+
+    TOAST('Optimisation VRP en cours...', 'info');
+    try {
+      const result = await API_CALL('POST', '/api/optimisation-vrp', {
+        num_trucks: numTrucks,
+        zone_id: zoneId ? parseInt(zoneId) : null,
+        sauvegarder: false,
+      });
+
+      vrpData = result;
+      renderRoutes(result.optimisation);
+
+      // Mettre à jour la liste des routes pour la simulation (une par camion)
+      const routes = (result.optimisation && result.optimisation.routes) || [];
+      const sel = document.getElementById('simRouteIndex');
+      if (sel) {
+        sel.innerHTML = '';
+        routes.forEach((r, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = `Route #${idx + 1} (camion ${idx + 1})`;
+          sel.appendChild(opt);
+        });
+      }
+
+      // Résultats
+      const opt = result.optimisation;
+      document.getElementById('vrpDist').textContent = `${opt.total_distance} km`;
+      document.getElementById('vrpSavings').textContent = `${opt.savings_pct}%`;
+      document.getElementById('vrpTrucks').textContent = opt.num_trucks_used;
+      document.getElementById('vrpResults').classList.remove('d-none');
+      document.getElementById('saveVrpBtn').disabled = false;
+
+      TOAST(`Optimisation terminée ! ${opt.savings_pct}% d'économie`, 'success');
+    } catch (e) {
+      TOAST('Erreur VRP: ' + e.message, 'danger');
+    }
+  }
+
+  const ROUTE_COLORS = ['#4361ee', '#e63946', '#2a9d8f', '#e76f51', '#8338ec', '#ffb703'];
+
+  function renderRoutes(data) {
+    routeLayer.clearLayers();
+    const routes = data.routes || [];
+
+    for (let i = 0; i < routes.length; i++) {
+      const route = routes[i];
+      const color = ROUTE_COLORS[i % ROUTE_COLORS.length];
+
+      if (!route.coordinates || !route.coordinates.length) {
+        const msg = route.routing_error
+          ? `Route #${i + 1}: OSRM indisponible — tracé non affiché (pas de ligne droite).`
+          : `Aucune coordonnée pour la route #${i + 1}.`;
+        TOAST(msg, route.routing_error ? 'warning' : 'danger');
+        continue;
+      }
+
+      if (route.routing_error) {
+        TOAST(`Route #${i + 1}: OSRM indisponible`, 'warning');
+      }
+
+      const polyline = L.polyline(route.coordinates, {
+        color,
+        weight: 5,
+        opacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(routeLayer);
+
+      polyline.bindPopup(`
+      <strong>Route #${i + 1}</strong><br>
+      Distance: <b>${route.distance_km} km</b><br>
+      Points: <b>${route.nb_points}</b>
+    `);
+
+      // Marqueurs numérotés sur les points de collecte
+      route.points.forEach((pt, j) => {
+        L.marker([pt.latitude, pt.longitude], {
+          icon: L.divIcon({
+            className: '',
+            html: `<div style="background:${color};color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3)">${j + 1}</div>`,
+            iconAnchor: [12, 12],
+          })
+        }).addTo(routeLayer);
+      });
+    }
+  }
+
+  // ── Helpers simulation VRP ──
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function updateSimInfo(speed, remaining, total, secondsLeft) {
+    const speedEl = document.getElementById('simSpeed');
+    const remEl = document.getElementById('simRemaining');
+    const etaEl = document.getElementById('simEta');
+    const progEl = document.getElementById('simProgress');
+    if (!speedEl) return;
+
+    speedEl.textContent = speed.toFixed(1);
+    remEl.textContent = remaining.toFixed(2);
+    const progress = total > 0 ? ((1 - remaining / total) * 100) : 0;
+    progEl.textContent = Math.max(0, Math.min(100, progress)).toFixed(0);
+
+    if (secondsLeft === Infinity) {
+      etaEl.textContent = '--';
+    } else {
+      const now = new Date();
+      const eta = new Date(now.getTime() + secondsLeft * 1000);
+      etaEl.textContent = eta.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+
+  function playRouteAnimation(index = 0) {
+    if (!vrpData || !vrpData.optimisation || !vrpData.optimisation.routes || !vrpData.optimisation.routes.length) {
+      TOAST('Aucune route VRP à animer.', 'warning');
+      return;
+    }
+    const routes = vrpData.optimisation.routes;
+    const route = routes[index] || routes[0];
+    const coords = route.coordinates || [];
+    if (!coords.length) {
+      TOAST('Pas de coordonnées pour cette route.', 'warning');
+      return;
+    }
+
+    if (vrpAnimationInterval) {
+      clearInterval(vrpAnimationInterval);
+      vrpAnimationInterval = null;
+    }
+    if (vrpAnimationMarker) {
+      map.removeLayer(vrpAnimationMarker);
+      vrpAnimationMarker = null;
+    }
+
+    let step = 0;
+    vrpAnimationMarker = L.marker(coords[0], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:#000;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,.4)">▶</div>',
+        iconAnchor: [10, 10],
+      })
+    }).addTo(map);
+    map.setView(coords[0], 14);
+
+    vrpAnimationInterval = setInterval(() => {
+      step += 1;
+      if (step >= coords.length) {
+        clearInterval(vrpAnimationInterval);
+        vrpAnimationInterval = null;
+        return;
+      }
+      vrpAnimationMarker.setLatLng(coords[step]);
+      map.panTo(coords[step]);
+    }, 800);
+  }
+
+  async function saveVRP() {
+    const numTrucks = parseInt(document.getElementById('numTrucks').value) || 3;
+    const zoneId = document.getElementById('zoneSelect').value;
+    try {
+      await API_CALL('POST', '/api/optimisation-vrp', {
+        num_trucks: numTrucks,
+        zone_id: zoneId ? parseInt(zoneId) : null,
+        sauvegarder: true,
+      });
+      TOAST('Tournées sauvegardées avec succès', 'success');
+      document.getElementById('saveVrpBtn').disabled = true;
+    } catch (e) {
+      TOAST('Erreur sauvegarde: ' + e.message, 'danger');
+    }
+  }
+
+  // ── Simulation GPS : affichage des camions réels + simulation VRP ──
+  async function loadTruckPositions() {
+    try {
+      const data = await API_CALL('GET', '/api/simulation/positions');
+      truckLayer.clearLayers();
+      (data.positions || []).forEach(c => {
+        const marker = L.marker([c.latitude, c.longitude], { icon: truckIcon(c.immatriculation) })
+          .bindPopup(`<b>${c.immatriculation}</b><br>Statut: ${c.statut}<br><small>Cliquez pour suivre ce camion</small>`)
+          .addTo(truckLayer);
+
+        marker.on('click', () => {
+          followTruckImmat = c.immatriculation;
+          TOAST(`Suivi du camion ${c.immatriculation}`, 'info');
+        });
+
+        if (followTruckImmat && c.immatriculation === followTruckImmat) {
+          map.panTo([c.latitude, c.longitude]);
+        }
+      });
+    } catch (e) {
+      console.error('Erreur chargement camions:', e);
+    }
+  }
+
+  function startSimulation() {
+    // Empêcher plusieurs setInterval() simultanés
+    if (simInterval) {
+      console.warn("[SIM] La simulation tourne déjà !");
+      return;
+    }
+
+    // Vérifier qu'une route optimisée existe
+    if (!vrpData || !vrpData.optimisation || !vrpData.optimisation.routes || !vrpData.optimisation.routes.length) {
+      TOAST('Lancez d\'abord une optimisation VRP.', 'warning');
+      return;
+    }
+
+    const sel = document.getElementById('simRouteIndex');
+    const idx = sel ? parseInt(sel.value || '0', 10) || 0 : 0;
+    const routes = vrpData.optimisation.routes;
+    const route = routes[idx] || routes[0];
+
+    // Vérifier que route.coordinates existe selon backend
+    const coords = route.coordinates;
+    if (!coords || !Array.isArray(coords) || !coords.length) {
+      console.error("[SIM] ERREUR :", route);
+      TOAST('Pas de coordonnées pour la route optimisée. OSRM est-il lancé ?', 'danger');
+      return;
+    }
+
+    console.log("[SIM] Route VRP OK, nombre de points :", coords.length);
+
+    const latlngs = coords.map(c => [c[0], c[1]]);
+
+    const segmentLengths = [];
+    for (let i = 0; i < latlngs.length - 1; i++) {
+      segmentLengths.push(haversineKm(latlngs[i][0], latlngs[i][1], latlngs[i + 1][0], latlngs[i + 1][1]));
+    }
+    const totalDist = segmentLengths.reduce((a, b) => a + b, 0);
+    const speedKmh = 120;
+
+    simTruckLayer.clearLayers();
+    loadTruckPositions();
+
+    const marker = L.marker(latlngs[0], {
+      icon: simTruckIcon(0),
+      zIndexOffset: 1000
+    }).addTo(simTruckLayer);
+
+    marker.bindPopup(`<b>🚛 Camion SIM-001</b><br>Départ...`).openPopup();
+    map.setView(latlngs[0], 15);
+
+    simState = {
+      latlngs,
+      segmentLengths,
+      totalDist,
+      speedKmh,
+      distanceAlong: 0,
+      marker,
+    };
+
+    TOAST('Simulation VRP démarrée. Les vrais camions (en tournée) se mettent à jour aussi.', 'info');
+    updateSimInfo(speedKmh, totalDist, totalDist, (totalDist / speedKmh) * 3600);
+
+    try { sessionStorage.setItem('autoSimulation', '1'); } catch (e) {}
+
+    if (backendSimInterval) clearInterval(backendSimInterval);
+    backendSimInterval = setInterval(async () => {
+      try {
+        await API_CALL('POST', '/api/simulation', { action: 'move' });
+        loadTruckPositions();
+      } catch (e) {}
+    }, 2000);
+
+    simInterval = setInterval(() => {
+      const state = simState;
+      if (!state) {
+        clearInterval(simInterval);
+        simInterval = null;
+        return;
+      }
+
+      const stepKm = state.speedKmh / 3600;
+      state.distanceAlong += stepKm;
+
+      if (state.distanceAlong >= state.totalDist) {
+        state.distanceAlong = state.totalDist;
+      }
+
+      let d = 0;
+      let segIndex = 0;
+      while (segIndex < state.segmentLengths.length && d + state.segmentLengths[segIndex] < state.distanceAlong) {
+        d += state.segmentLengths[segIndex];
+        segIndex++;
+      }
+
+      if (segIndex >= state.segmentLengths.length) {
+        if (state.marker) {
+          state.marker.setLatLng(state.latlngs[state.latlngs.length - 1]);
+          state.marker.setPopupContent(`<b>🚛 Camion SIM-001</b><br>✅ Arrivée à destination !`);
+        }
+        updateSimInfo(state.speedKmh, 0, state.totalDist, 0);
+        TOAST('Simulation terminée', 'success');
+
+        clearInterval(simInterval);
+        simInterval = null;
+        try { sessionStorage.setItem('autoSimulation', '0'); } catch (e) {}
+        return;
+      }
+
+      const segLen = state.segmentLengths[segIndex] || 0.000001;
+      const t = (state.distanceAlong - d) / segLen;
+      const [lat1, lng1] = state.latlngs[segIndex];
+      const [lat2, lng2] = state.latlngs[segIndex + 1];
+      const lat = lat1 + (lat2 - lat1) * t;
+      const lng = lng1 + (lng2 - lng1) * t;
+
+      if (state.marker) {
+        state.marker.setLatLng([lat, lng]);
+        map.panTo([lat, lng]);
+
+        const angleRad = Math.atan2(lng2 - lng1, lat2 - lat1);
+        const angleDeg = angleRad * 180 / Math.PI;
+        state.marker.setIcon(simTruckIcon(angleDeg));
+
+        const remainingTmp = Math.max(0, state.totalDist - state.distanceAlong);
+        state.marker.setPopupContent(`
+        <b>🚛 Camion SIM-001</b><br>
+        Distance restante : <b>${remainingTmp.toFixed(2)} km</b><br>
+        Progression : <b>${((1 - remainingTmp / state.totalDist) * 100).toFixed(0)}%</b>
+      `);
+      }
+
+      const remaining = Math.max(0, state.totalDist - state.distanceAlong);
+      const secondsLeft = remaining / state.speedKmh * 3600;
+      updateSimInfo(state.speedKmh, remaining, state.totalDist, secondsLeft);
+    }, 1000);
+  }
+
+  function stopSimulation() {
+    if (simInterval) {
+      clearInterval(simInterval);
+      simInterval = null;
+    }
+    if (backendSimInterval) {
+      clearInterval(backendSimInterval);
+      backendSimInterval = null;
+    }
+    if (simTruckLayer) {
+      simTruckLayer.clearLayers();
+    }
+    simState = null;
+    TOAST('Simulation arrêtée', 'secondary');
+    updateSimInfo(0, 0, 1, Infinity);
+    try { sessionStorage.setItem('autoSimulation', '0'); } catch (e) {}
+  }
+  // ── Init ──
+  document.addEventListener('DOMContentLoaded', () => {
+    loadPoints();
+    loadTruckPositions();
+
+    // Si la simulation était active avant de quitter la carte, la relancer automatiquement
+    try {
+      if (sessionStorage.getItem('autoSimulation') === '1') {
+        // Petit délai pour laisser les données VRP / points se charger si besoin
+        setTimeout(() => {
+          startSimulation();
+        }, 800);
+      }
+    } catch (e) {}
+  });
+</script>
+{% endblock %}

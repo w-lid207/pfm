@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Alertes — CollecteOpt{% endblock %}
+
+{% block content %}
+<div class="container-fluid page-content">
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="fw-bold mb-1"><i class="bi bi-bell text-warning me-2"></i>Centre d'Alertes</h2>
+      <p class="text-muted mb-0">Notifications et alertes système en temps réel</p>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="markAllRead()">
+      <i class="bi bi-check-all me-1"></i>Tout marquer comme lu
+    </button>
+  </div>
+
+  <div id="alertesContainer">
+    <div class="text-center py-5"><div class="spinner-border"></div></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const NIVEAUX = {
+  danger: { bg: 'danger', icon: 'bi-exclamation-octagon-fill', text: 'Critique' },
+  warning: { bg: 'warning', icon: 'bi-exclamation-triangle-fill', text: 'Avertissement' },
+  info: { bg: 'info', icon: 'bi-info-circle-fill', text: 'Info' },
+};
+
+async function loadAlertes() {
+  try {
+    const data = await API_CALL('GET', '/api/alertes');
+    const alertes = data.alertes || [];
+
+    if (!alertes.length) {
+      document.getElementById('alertesContainer').innerHTML = `
+        <div class="text-center py-5">
+          <i class="bi bi-bell-slash fs-1 text-muted"></i>
+          <p class="text-muted mt-2">Aucune alerte</p>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('alertesContainer').innerHTML = alertes.map(a => {
+      const niv = NIVEAUX[a.niveau] || NIVEAUX.info;
+      return `
+        <div class="alert alert-${niv.bg} alert-dismissible d-flex align-items-start gap-3 ${a.lue ? 'opacity-50' : ''}" id="alert-${a.id}">
+          <i class="bi ${niv.icon} fs-4 flex-shrink-0 mt-1"></i>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between">
+              <strong>${a.titre}</strong>
+              <small>${new Date(a.created_at).toLocaleString('fr-FR')}</small>
+            </div>
+            <p class="mb-1 mt-1">${a.message || ''}</p>
+            <div class="d-flex gap-2">
+              <span class="badge bg-${niv.bg} text-dark">${niv.text}</span>
+              <span class="badge bg-light text-dark border">${a.type_alerte}</span>
+              ${a.entite_type ? `<span class="badge bg-secondary">${a.entite_type} #${a.entite_id||''}</span>` : ''}
+              ${a.lue ? '<span class="badge bg-success"><i class="bi bi-check me-1"></i>Lu</span>' : ''}
+            </div>
+          </div>
+          ${!a.lue ? `<button class="btn btn-sm btn-outline-dark" onclick="markRead(${a.id})"><i class="bi bi-check2"></i> Lu</button>` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch (e) { TOAST('Erreur chargement alertes', 'danger'); }
+}
+
+async function markRead(id) {
+  await API_CALL('PUT', `/api/alertes/${id}/lue`);
+  loadAlertes();
+}
+
+async function markAllRead() {
+  await API_CALL('PUT', '/api/alertes/lire-tout');
+  TOAST('Toutes les alertes marquées comme lues', 'success');
+  loadAlertes();
+}
+
+// WebSocket : nouvelles alertes en temps réel
+if (typeof socket !== 'undefined') {
+  socket.on('alert_received', () => loadAlertes());
+}
+
+document.addEventListener('DOMContentLoaded', loadAlertes);
+</script>
+{% endblock %}

@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — CollecteOpt Agadir{% endblock %}
+
+{% block content %}
+<div class="container-fluid page-content">
+  <!-- Page Header -->
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Tableau de Bord</h2>
+      <p class="text-muted mb-0">Vue d'ensemble des opérations de collecte — Agadir</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadDashboard()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Actualiser
+      </button>
+      <button type="button" class="btn btn-danger btn-sm" id="exportPdfBtn" onclick="exportTourneesPdf()">
+        <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Cards Row -->
+  <div class="row g-3 mb-4" id="kpiRow">
+    <!-- Camions -->
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-icon"><i class="bi bi-truck-front"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-value" id="kpiCamions">--</div>
+          <div class="kpi-label">Camions Actifs</div>
+          <div class="kpi-sub" id="kpiCamionsEn">-- en tournée</div>
+        </div>
+      </div>
+    </div>
+    <!-- Points -->
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-icon"><i class="bi bi-geo-alt"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-value" id="kpiPoints">--</div>
+          <div class="kpi-label">Points de Collecte</div>
+          <div class="kpi-sub text-danger" id="kpiUrgents">-- urgents</div>
+        </div>
+      </div>
+    </div>
+    <!-- Distance -->
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-icon"><i class="bi bi-signpost-2"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-value" id="kpiDist">--</div>
+          <div class="kpi-label">km ce Mois</div>
+          <div class="kpi-sub" id="kpiTournees">-- tournées</div>
+        </div>
+      </div>
+    </div>
+    <!-- CO2 -->
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-red">
+        <div class="kpi-icon"><i class="bi bi-cloud"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-value" id="kpiCO2">--</div>
+          <div class="kpi-label">kg CO₂ ce Mois</div>
+          <div class="kpi-sub" id="kpiCout">-- MAD coût</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="row g-3 mb-4">
+    <!-- Distance Chart -->
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Distances (7 derniers jours)</span>
+          <span class="badge bg-primary-subtle text-primary">km/jour</span>
+        </div>
+        <div class="card-body">
+          <canvas id="chartDistances" height="100"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zones Pie -->
+    <div class="col-12 col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-pie-chart me-2 text-success"></i>Points par Zone
+        </div>
+        <div class="card-body d-flex align-items-center justify-content-center">
+          <canvas id="chartZones" style="max-height:220px"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts + Status Row -->
+  <div class="row g-3">
+    <!-- Alertes récentes -->
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold"><i class="bi bi-bell me-2 text-warning"></i>Alertes Récentes</span>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="generateAlerts()">
+              <i class="bi bi-lightning-charge me-1"></i>Scanner alertes
+            </button>
+            <a href="/alertes" class="btn btn-sm btn-outline-secondary">Voir tout</a>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div id="alertesList" class="list-group list-group-flush"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statut camions -->
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold"><i class="bi bi-truck me-2 text-info"></i>Statut Camions</span>
+          <a href="/camions" class="btn btn-sm btn-outline-secondary">Gérer</a>
+        </div>
+        <div class="card-body p-0">
+          <div id="camionsList" class="list-group list-group-flush"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let chartDist = null, chartZones = null;
+
+async function loadDashboard() {
+  try {
+    const [stats, alertes, camions] = await Promise.all([
+      API_CALL('GET', '/api/dashboard'),
+      API_CALL('GET', '/api/alertes?non_lues=false'),
+      API_CALL('GET', '/api/camions'),
+    ]);
+
+    // KPIs
+    document.getElementById('kpiCamions').textContent = stats.camions.total;
+    document.getElementById('kpiCamionsEn').textContent = `${stats.camions.en_tournee} en tournée`;
+    document.getElementById('kpiPoints').textContent = stats.points.total;
+    document.getElementById('kpiUrgents').textContent = `${stats.points.urgents} urgents`;
+    document.getElementById('kpiDist').textContent = stats.performances.distance_totale_km.toLocaleString();
+    document.getElementById('kpiTournees').textContent = `${stats.performances.tournees_terminees} tournées`;
+    document.getElementById('kpiCO2').textContent = stats.performances.co2_total_kg.toLocaleString();
+    document.getElementById('kpiCout').textContent = `${stats.performances.cout_total_mad.toLocaleString()} MAD`;
+
+    // Chart distances
+    const labels = stats.chart_distances.map(d => d.date);
+    const distances = stats.chart_distances.map(d => d.distance);
+
+    if (chartDist) chartDist.destroy();
+    const ctxD = document.getElementById('chartDistances').getContext('2d');
+    chartDist = new Chart(ctxD, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Distance (km)',
+          data: distances,
+          backgroundColor: 'rgba(67,97,238,0.7)',
+          borderColor: '#4361ee',
+          borderWidth: 1,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } } }
+      }
+    });
+
+    // Chart zones
+    const zones = stats.zones.detail;
+    if (chartZones) chartZones.destroy();
+    const ctxZ = document.getElementById('chartZones').getContext('2d');
+    chartZones = new Chart(ctxZ, {
+      type: 'doughnut',
+      data: {
+        labels: zones.map(z => z.nom),
+        datasets: [{
+          data: zones.map(z => z.nb_points),
+          backgroundColor: zones.map(z => z.couleur),
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { padding: 10, font: { size: 11 } } }
+        }
+      }
+    });
+
+    // Alertes
+    const alertesHtml = (alertes.alertes || []).slice(0, 5).map(a => `
+      <div class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-2">
+        <span class="badge bg-${a.niveau === 'danger' ? 'danger' : a.niveau === 'warning' ? 'warning text-dark' : 'info'} rounded-pill">
+          <i class="bi bi-exclamation"></i>
+        </span>
+        <div class="flex-grow-1">
+          <div class="fw-medium small">${a.titre}</div>
+          ${a.message ? `<div class="text-muted small" style="line-height:1.2">${a.message}</div>` : ''}
+          <small class="text-muted">${new Date(a.created_at).toLocaleString('fr-FR')}</small>
+        </div>
+        ${a.lue ? '' : '<span class="badge bg-danger rounded-circle" style="width:8px;height:8px;padding:0"></span>'}
+      </div>
+    `).join('');
+    document.getElementById('alertesList').innerHTML = alertesHtml || '<div class="p-3 text-muted text-center">Aucune alerte</div>';
+
+    // Camions
+    const camionsHtml = (camions.camions || []).map(c => {
+      const statuts = { disponible: 'success', en_tournee: 'primary', panne: 'danger', maintenance: 'warning' };
+      const badge = statuts[c.statut] || 'secondary';
+      return `
+        <div class="list-group-item d-flex align-items-center gap-3 py-2">
+          <i class="bi bi-truck-front fs-5 text-muted"></i>
+          <div class="flex-grow-1">
+            <div class="fw-semibold small">${c.immatriculation}</div>
+            <small class="text-muted">${c.modele || ''} — ${c.capacite_m3} m³</small>
+          </div>
+          <span class="badge bg-${badge}">${c.statut.replace('_', ' ')}</span>
+        </div>
+      `;
+    }).join('');
+    document.getElementById('camionsList').innerHTML = camionsHtml || '<div class="p-3 text-muted text-center">Aucun camion</div>';
+
+  } catch (e) {
+    console.error('Erreur dashboard:', e);
+  }
+}
+
+async function generateAlerts() {
+  try {
+    const res = await API_CALL('POST', '/api/alertes/generer');
+    const n = res.nb_creees || 0;
+    if (n > 0) {
+      TOAST(`${n} alerte(s) générée(s).`, 'success');
+    } else {
+      TOAST('Aucune nouvelle alerte à générer.', 'info');
+    }
+    loadDashboard();
+  } catch (e) {
+    console.error('Erreur génération alertes:', e);
+    TOAST(e.message || 'Erreur lors de la génération des alertes.', 'danger');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadDashboard);
+// Rafraîchissement automatique toutes les 30s
+setInterval(loadDashboard, 30000);
+
+async function exportTourneesPdf() {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    TOAST('Vous devez vous reconnecter pour exporter le PDF.', 'warning');
+    window.location.href = '/';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/export/tournees/pdf', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+      return;
+    }
+
+    if (!res.ok) {
+      TOAST('Erreur lors de la génération du PDF.', 'danger');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rapport_tournees_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    TOAST('Erreur réseau pendant l\'export.', 'danger');
+  }
+}
+</script>
+{% endblock %}

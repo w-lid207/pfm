@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Logs Sécurité — CollecteOpt{% endblock %}
+
+{% block content %}
+<div class="container-fluid page-content">
+  <div class="page-header">
+    <h2 class="fw-bold mb-1"><i class="bi bi-shield-check text-success me-2"></i>Logs de Sécurité</h2>
+    <p class="text-muted mb-0">Historique des connexions et actions sensibles (Admin seulement)</p>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-dark">
+            <tr><th>Date/Heure</th><th>Utilisateur</th><th>Action</th><th>IP</th><th>Statut</th></tr>
+          </thead>
+          <tbody id="logsBody">
+            <tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadLogs() {
+  try {
+    const data = await API_CALL('GET', '/api/security-logs');
+    const logs = data.logs || [];
+    document.getElementById('logsBody').innerHTML = logs.map(l => `
+      <tr>
+        <td><small>${new Date(l.created_at).toLocaleString('fr-FR')}</small></td>
+        <td><strong>${l.username}</strong></td>
+        <td>
+          <span class="badge bg-${l.action.includes('fail') ? 'danger' : l.action === 'login' ? 'success' : 'secondary'}">
+            ${l.action}
+          </span>
+        </td>
+        <td><small class="text-muted font-monospace">${l.ip_address || '--'}</small></td>
+        <td>
+          <span class="badge bg-${l.succes ? 'success' : 'danger'}">
+            <i class="bi bi-${l.succes ? 'check' : 'x'}-circle me-1"></i>
+            ${l.succes ? 'Succès' : 'Échec'}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+    if (!logs.length) document.getElementById('logsBody').innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Aucun log</td></tr>';
+  } catch (e) {
+    document.getElementById('logsBody').innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Accès refusé (admin requis)</td></tr>`;
+  }
+}
+document.addEventListener('DOMContentLoaded', loadLogs);
+</script>
+{% endblock %}

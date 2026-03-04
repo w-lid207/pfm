@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}Tournées — CollecteOpt Agadir{% endblock %}
+
+{% block content %}
+<div class="container-fluid page-content">
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="fw-bold mb-1"><i class="bi bi-truck text-primary me-2"></i>Gestion des Tournées</h2>
+      <p class="text-muted mb-0">Planification et suivi des tournées de collecte</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-success btn-sm" onclick="exportTourneesCsv()">
+        <i class="bi bi-filetype-csv me-1"></i>CSV
+      </button>
+      <button type="button" class="btn btn-danger btn-sm" onclick="exportTourneesPdf()">
+        <i class="bi bi-file-pdf me-1"></i>PDF
+      </button>
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalPlanif">
+        <i class="bi bi-plus-lg me-1"></i>Nouvelle Tournée
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-center">
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filtreStatut" onchange="loadTournees()">
+            <option value="">Tous les statuts</option>
+            <option value="planifiee">Planifiée</option>
+            <option value="en_cours">En cours</option>
+            <option value="terminee">Terminée</option>
+            <option value="annulee">Annulée</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <input type="date" class="form-control form-control-sm" id="filtreDate" onchange="loadTournees()">
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
+            <i class="bi bi-x-circle me-1"></i>Effacer
+          </button>
+        </div>
+        <div class="col-auto ms-auto">
+          <span class="text-muted small" id="tourneeCount">-- tournées</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hebdomadaire Planning -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex justify-content-between">
+      <span class="fw-semibold"><i class="bi bi-calendar-week me-2 text-info"></i>Planning Hebdomadaire</span>
+      <button class="btn btn-sm btn-outline-info" onclick="loadHebdo()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Actualiser
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0" id="hebdoTable">
+          <thead class="table-light"><tr id="hebdoHeader"></tr></thead>
+          <tbody id="hebdoBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tournées Table -->
+  <div class="card shadow-sm">
+    <div class="card-header fw-semibold">
+      <i class="bi bi-list-ul me-2 text-primary"></i>Liste des Tournées
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Nom</th><th>Camion</th><th>Date</th><th>Départ</th>
+              <th>Points</th><th>Distance</th><th>CO₂</th><th>Coût</th>
+              <th>Statut</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tourneesBody">
+            <tr><td colspan="10" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Planification -->
+<div class="modal fade" id="modalPlanif" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Nouvelle Tournée</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Nom de la tournée</label>
+          <input type="text" class="form-control" id="planifNom" placeholder="ex: Tournée Matin Zone A">
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" id="planifDate">
+          </div>
+          <div class="col">
+            <label class="form-label">Heure départ</label>
+            <input type="time" class="form-control" id="planifHeure" value="06:00">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Camion</label>
+          <select class="form-select" id="planifCamion">
+            <option value="">-- Sélectionner un camion --</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" onclick="createTournee()">
+          <i class="bi bi-save me-1"></i>Créer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STATUT_BADGES = {
+  planifiee: 'secondary', en_cours: 'primary', terminee: 'success', annulee: 'danger'
+};
+
+async function loadTournees() {
+  const statut = document.getElementById('filtreStatut').value;
+  const date = document.getElementById('filtreDate').value;
+  let url = '/api/tournees?per_page=50';
+  if (statut) url += `&statut=${statut}`;
+  if (date) url += `&date=${date}`;
+
+  try {
+    const data = await API_CALL('GET', url);
+    const tbody = document.getElementById('tourneesBody');
+    document.getElementById('tourneeCount').textContent = `${data.total} tournées`;
+
+    if (!data.tournees?.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">Aucune tournée trouvée</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.tournees.map(t => `
+      <tr>
+        <td><strong>${t.nom}</strong>${t.optimisee ? ' <span class="badge bg-success-subtle text-success ms-1"><i class="bi bi-cpu"></i> VRP</span>' : ''}</td>
+        <td><span class="badge bg-light text-dark border">${t.camion || '--'}</span></td>
+        <td>${t.date_tournee || '--'}</td>
+        <td>${t.heure_depart || '--'}</td>
+        <td><span class="badge bg-secondary">${t.nb_points}</span></td>
+        <td>${t.distance_km} km</td>
+        <td>${t.co2_kg} kg</td>
+        <td>${t.cout_mad} MAD</td>
+        <td><span class="badge bg-${STATUT_BADGES[t.statut] || 'secondary'}">${t.statut.replace('_', ' ')}</span></td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            ${t.statut === 'planifiee' ? `<button class="btn btn-outline-primary" onclick="setStatut(${t.id}, 'en_cours')" title="Démarrer"><i class="bi bi-play-fill"></i></button>` : ''}
+            ${t.statut === 'en_cours' ? `<button class="btn btn-outline-success" onclick="setStatut(${t.id}, 'terminee')" title="Terminer"><i class="bi bi-check-lg"></i></button>` : ''}
+            ${['planifiee','en_cours'].includes(t.statut) ? `<button class="btn btn-outline-danger" onclick="setStatut(${t.id}, 'annulee')" title="Annuler"><i class="bi bi-x-lg"></i></button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    TOAST('Erreur chargement tournées', 'danger');
+  }
+}
+
+async function setStatut(id, statut) {
+  try {
+    await API_CALL('PUT', `/api/tournees/${id}`, { statut });
+    TOAST(`Tournée mise à jour: ${statut}`, 'success');
+    loadTournees();
+  } catch (e) { TOAST('Erreur mise à jour', 'danger'); }
+}
+
+async function loadHebdo() {
+  try {
+    const data = await API_CALL('GET', '/api/planification/hebdomadaire');
+    const header = document.getElementById('hebdoHeader');
+    const body = document.getElementById('hebdoBody');
+
+    header.innerHTML = '<th style="min-width:60px">Créneau</th>' +
+      data.planning.map(d => `<th class="text-center">${d.jour}<br><small class="text-muted">${d.date.slice(5)}</small></th>`).join('');
+
+    const maxTournees = Math.max(...data.planning.map(d => d.tournees.length), 1);
+    let rows = '';
+    for (let i = 0; i < maxTournees; i++) {
+      rows += '<tr><td class="text-muted small">T' + (i+1) + '</td>';
+      data.planning.forEach(d => {
+        const t = d.tournees[i];
+        rows += t ?
+          `<td class="p-1"><div class="badge bg-${STATUT_BADGES[t.statut]||'secondary'} w-100 text-truncate" title="${t.nom}">${t.nom.slice(0,15)}...</div></td>` :
+          '<td></td>';
+      });
+      rows += '</tr>';
+    }
+    body.innerHTML = rows || '<tr><td colspan="8" class="text-center text-muted">Aucune tournée cette semaine</td></tr>';
+  } catch (e) {}
+}
+
+async function loadCamionsForModal() {
+  try {
+    const data = await API_CALL('GET', '/api/camions');
+    const sel = document.getElementById('planifCamion');
+    sel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    (data.camions || []).filter(c => c.statut === 'disponible').forEach(c => {
+      sel.innerHTML += `<option value="${c.id}">${c.immatriculation} (${c.modele})</option>`;
+    });
+  } catch (e) {}
+}
+
+async function createTournee() {
+  const nom = document.getElementById('planifNom').value.trim();
+  const date = document.getElementById('planifDate').value;
+  const heure = document.getElementById('planifHeure').value;
+  const camion_id = document.getElementById('planifCamion').value;
+  if (!nom || !date) { TOAST('Nom et date obligatoires', 'warning'); return; }
+
+  try {
+    await API_CALL('POST', '/api/planification', {
+      nom, date_tournee: date, heure_depart: heure,
+      camion_id: camion_id ? parseInt(camion_id) : null,
+    });
+    bootstrap.Modal.getInstance(document.getElementById('modalPlanif')).hide();
+    TOAST('Tournée planifiée !', 'success');
+    loadTournees();
+  } catch (e) { TOAST('Erreur création', 'danger'); }
+}
+
+function clearFilters() {
+  document.getElementById('filtreStatut').value = '';
+  document.getElementById('filtreDate').value = '';
+  loadTournees();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadTournees();
+  loadHebdo();
+  loadCamionsForModal();
+  // Demain par défaut
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('planifDate').value = tomorrow.toISOString().split('T')[0];
+});
+
+async function exportTourneesCsv() {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    TOAST('Vous devez vous reconnecter pour exporter le CSV.', 'warning');
+    window.location.href = '/';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/export/tournees/csv', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+      return;
+    }
+
+    if (!res.ok) {
+      TOAST('Erreur lors de la génération du CSV.', 'danger');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tournees_agadir_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    TOAST('Erreur réseau pendant l\'export CSV.', 'danger');
+  }
+}
+
+async function exportTourneesPdf() {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    TOAST('Vous devez vous reconnecter pour exporter le PDF.', 'warning');
+    window.location.href = '/';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/export/tournees/pdf', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+      return;
+    }
+
+    if (!res.ok) {
+      TOAST('Erreur lors de la génération du PDF.', 'danger');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rapport_tournees_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    TOAST('Erreur réseau pendant l\'export PDF.', 'danger');
+  }
+}
+</script>
+{% endblock %}

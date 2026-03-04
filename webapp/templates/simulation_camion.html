@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation de Livraison Dynamique — CollecteOpt</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .page-header {
+            background: var(--bg-header);
+            color: #fff;
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-card);
+            padding: 20px;
+        }
+
+        .panel-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-xs);
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .flex-row>* {
+            flex: 1;
+        }
+
+        .btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius-xs);
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-start {
+            background: #16a34a;
+            font-size: 16px;
+            padding: 12px 24px;
+            margin-top: 15px;
+        }
+
+        .btn-start:hover {
+            background: #15803d;
+        }
+
+        .btn-start:disabled,
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .points-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .point-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-xs);
+            margin-bottom: 8px;
+            background: #f9fafb;
+        }
+
+        .point-item .info {
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .point-item .info strong {
+            color: var(--text-primary);
+        }
+
+        .point-item .status {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .point-item .status.active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .point-item .status.done {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .btn-remove {
+            color: var(--accent-red);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-remove:hover {
+            text-decoration: underline;
+        }
+
+        .summary-box {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: var(--radius-xs);
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .summary-box h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .summary-stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .summary-stat span:last-child {
+            font-weight: 600;
+        }
+
+        .simulation-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .truck-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: #e2e8f0;
+            border-radius: var(--radius-sm);
+            position: relative;
+            overflow: hidden;
+            height: 120px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .truck {
+            font-size: 40px;
+            position: absolute;
+            left: 20px;
+            z-index: 2;
+            transform: translateX(0);
+        }
+
+        .truck-load-label {
+            position: absolute;
+            top: -15px;
+            left: 5px;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .depot {
+            font-size: 40px;
+            position: absolute;
+            left: 20px;
+            opacity: 0.5;
+        }
+
+        .depot-label {
+            position: absolute;
+            left: 20px;
+            top: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .destination {
+            font-size: 40px;
+            position: absolute;
+            right: 20px;
+        }
+
+        .destination-label {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .truck-status {
+            text-align: center;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 10px;
+            background: var(--bg-card);
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border-light);
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .log-area {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: var(--radius-sm);
+            height: 350px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #334155;
+            line-height: 1.4;
+        }
+
+        .log-entry.success {
+            color: #4ade80;
+        }
+
+        .log-entry.warning {
+            color: #fbbf24;
+        }
+
+        .log-entry.info {
+            color: #60a5fa;
+        }
+
+        .log-entry.error {
+            color: #f87171;
+        }
+
+        .log-entry .time {
+            color: #94a3b8;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-layout">
+        <!-- SIDEBAR -->
+        <nav class="nav-sidebar" id="mainSidebar">
+            <div class="nav-brand">
+                <div>
+                    <h1>🚛 <span>CollecteOpt</span></h1>
+                    <p>Gestion intelligente de collecte</p>
+                </div>
+            </div>
+
+            <div class="nav-links">
+                <div class="sidebar-section-title">Navigation</div>
+                <a href="/dashboard" class="nav-link">
+                    <span class="icon">📊</span><span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/carte" class="nav-link">
+                    <span class="icon">🗺️</span><span class="nav-text">Carte</span>
+                </a>
+                <a href="/simulation" class="nav-link">
+                    <span class="icon">📍</span><span class="nav-text">Simulation Trajets</span>
+                </a>
+
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT -->
+        <div class="page-main">
+            <div class="page-header">
+                <h2>📦 Simulation Intelligente de Livraison (Dynamique)</h2>
+            </div>
+
+            <div class="container">
+                <!-- PANNEAU MISSION -->
+                <div class="panel">
+                    <div class="panel-header">1. Configuration du Scénario</div>
+
+                    <div class="form-group">
+                        <label>Capacité maximale du camion (kg)</label>
+                        <input type="number" id="truckCapacityInput" class="form-control" placeholder="Ex: 3000" min="1"
+                            value="3000">
+                    </div>
+
+                    <form id="pointForm" style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                        <label style="font-size: 14px; font-weight: 600; display: block; margin-bottom: 10px;">Ajouter
+                            un point de livraison :</label>
+                        <div class="flex-row">
+                            <div class="form-group">
+                                <label>Nom du Point</label>
+                                <input type="text" id="pointName" class="form-control" placeholder="Ex: Point A"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label>Poids requis (kg)</label>
+                                <input type="number" id="pointWeight" class="form-control" placeholder="Ex: 5000"
+                                    min="1" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn" id="btnAddPoint">Ajouter le point</button>
+                    </form>
+
+                    <div class="points-list" id="pointsList">
+                        <!-- Points ajoutés apparaîtront ici -->
+                    </div>
+
+                    <div class="summary-box" style="margin-top: 15px;">
+                        <h3>Résumé de la mission</h3>
+                        <div class="summary-stat"><span>Capacité définie:</span> <span id="summaryCapacity">3000
+                                kg</span></div>
+                        <div class="summary-stat"><span>Marchandise Totale:</span> <span id="summaryTotalWeight">0
+                                kg</span></div>
+                        <div class="summary-stat"><span>Voyages Estimés Mins.:</span> <span
+                                id="summaryTotalTrips">0</span></div>
+                    </div>
+
+                    <button id="btnStartSim" class="btn btn-start" disabled>Démarrer la Logique (0 pts)</button>
+                </div>
+
+                <!-- ZONE DE SIMULATION -->
+                <div class="panel simulation-area">
+                    <div class="panel-header">2. Suivi de la Logistique</div>
+                    <div class="truck-status" id="truckStatus">En attente des ordres au dépôt...</div>
+
+                    <div class="truck-container" id="truckContainer">
+                        <div class="depot-label">DÉPÔT</div>
+                        <div class="depot" title="Dépôt Central">🏭</div>
+                        <div class="truck" id="truckIcon">
+                            <div class="truck-load-label" id="truckLoadLabel" style="display:none;">0 kg</div>
+                            🚛
+                        </div>
+                        <div class="destination-label" id="destinationLabel">ATTENTE</div>
+                        <div class="destination" id="destinationIcon" title="Point de Livraison">📍</div>
+                    </div>
+
+                    <div class="log-area" id="logArea">
+                        <div class="log-entry info"><span class="time"></span>> Système logistique prêt. Veuillez
+                            configurer les points.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const truckCapacityInput = document.getElementById('truckCapacityInput');
+        const pointForm = document.getElementById('pointForm');
+        const pointNameInput = document.getElementById('pointName');
+        const pointWeightInput = document.getElementById('pointWeight');
+        const pointsListEl = document.getElementById('pointsList');
+        const btnStartSim = document.getElementById('btnStartSim');
+
+        const summaryCapacity = document.getElementById('summaryCapacity');
+        const summaryTotalWeight = document.getElementById('summaryTotalWeight');
+        const summaryTotalTrips = document.getElementById('summaryTotalTrips');
+
+        const truckStatus = document.getElementById('truckStatus');
+        const truckIcon = document.getElementById('truckIcon');
+        const truckLoadLabel = document.getElementById('truckLoadLabel');
+        const destinationLabel = document.getElementById('destinationLabel');
+        const truckContainer = document.getElementById('truckContainer');
+        const logArea = document.getElementById('logArea');
+
+        // State
+        let targetPoints = [];
+        let isSimulating = false;
+
+        // === CONFIGURATION ===
+
+        truckCapacityInput.addEventListener('input', () => {
+            updateUI();
+        });
+
+        pointForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (isSimulating) return;
+
+            const name = pointNameInput.value.trim();
+            const weight = parseInt(pointWeightInput.value);
+
+            targetPoints.push({
+                id: Date.now(),
+                name: name,
+                totalRequiredWeight: weight,
+                remainingWeight: weight,
+                deliveredWeight: 0
+            });
+
+            pointForm.reset();
+            pointNameInput.focus();
+            updateUI();
+        });
+
+        function removePoint(id) {
+            if (isSimulating) return;
+            targetPoints = targetPoints.filter(p => p.id !== id);
+            updateUI();
+        }
+
+        function updateUI() {
+            const currentCapacity = parseInt(truckCapacityInput.value) || 0;
+            summaryCapacity.textContent = `${currentCapacity} kg`;
+
+            let totalWeight = 0;
+
+            pointsListEl.innerHTML = targetPoints.map(p => {
+                totalWeight += p.totalRequiredWeight;
+                return `
+                    <div class="point-item" id="pt-${p.id}">
+                        <div class="info">
+                            <strong>${p.name}</strong>
+                            <span>Total à livrer: ${p.totalRequiredWeight} kg</span>
+                            <span style="font-size:11px; color:#64748b; margin-top:2px;" class="progress-txt">Livré: ${p.deliveredWeight} / ${p.totalRequiredWeight} kg</span>
+                        </div>
+                        <div class="status" id="st-${p.id}">En attente</div>
+                        ${!isSimulating ? `<button class="btn-remove" onclick="removePoint(${p.id})" title="Supprimer">✖</button>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            summaryTotalWeight.textContent = `${totalWeight} kg`;
+
+            if (currentCapacity > 0) {
+                // Trips computation (dynamic max capacity behavior)
+                let trips = 0;
+                targetPoints.forEach(p => {
+                    trips += Math.ceil(p.totalRequiredWeight / currentCapacity);
+                });
+                summaryTotalTrips.textContent = trips;
+            } else {
+                summaryTotalTrips.textContent = '0';
+            }
+
+            if (targetPoints.length > 0 && currentCapacity > 0) {
+                btnStartSim.disabled = false;
+                btnStartSim.textContent = `Démarrer la Simulation (${targetPoints.length} pts)`;
+            } else {
+                btnStartSim.disabled = true;
+                btnStartSim.textContent = `Démarrer (Configuration Incomplète)`;
+            }
+        }
+
+        function setPointStatus(id, stateText, stateClass, progressText) {
+            const stEl = document.getElementById(`st-${id}`);
+            const ptEl = document.getElementById(`pt-${id}`);
+            if (stEl) {
+                stEl.textContent = stateText;
+                stEl.className = `status ${stateClass}`;
+            }
+            if (ptEl && progressText) {
+                const progEl = ptEl.querySelector('.progress-txt');
+                if (progEl) progEl.textContent = progressText;
+            }
+        }
+
+        // === SIMULATION ENGINE ===
+
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const el = document.createElement('div');
+            el.className = `log-entry ${type}`;
+            el.innerHTML = `<span class="time">[${time}]</span> ${msg}`;
+            logArea.prepend(el);
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function animateTruck(startX, endX, flipX) {
+            return new Promise(resolve => {
+                let currentX = startX;
+                let velocity = 0;
+                const maxVelocity = 3.5;
+                const acceleration = 0.04;
+
+                function frame() {
+                    let distanceRemaining = Math.abs(endX - currentX);
+                    let decelDist = (velocity * velocity) / (2 * acceleration);
+
+                    if (distanceRemaining <= decelDist && velocity > 0) {
+                        velocity -= acceleration;
+                        if (velocity < 0.3) velocity = 0.3;
+                    } else if (velocity < maxVelocity) {
+                        velocity += acceleration;
+                    }
+
+                    if (endX > startX) {
+                        currentX += velocity;
+                        if (currentX > endX) currentX = endX;
+                    } else {
+                        currentX -= velocity;
+                        if (currentX < endX) currentX = endX;
+                    }
+
+                    truckIcon.style.transform = `translateX(${currentX}px) scaleX(${flipX ? -1 : 1})`;
+
+                    // Keep label correctly oriented if truck flips
+                    if (flipX) {
+                        truckLoadLabel.style.transform = `scaleX(-1)`;
+                    } else {
+                        truckLoadLabel.style.transform = `scaleX(1)`;
+                    }
+
+                    if (currentX === endX) {
+                        resolve();
+                    } else {
+                        requestAnimationFrame(frame);
+                    }
+                }
+                requestAnimationFrame(frame);
+            });
+        }
+
+        btnStartSim.addEventListener('click', async () => {
+            if (isSimulating) return;
+            isSimulating = true;
+            updateUI(); // Redraw without remove buttons
+
+            const capacity = parseInt(truckCapacityInput.value);
+            const routeDistancePX = Math.max(0, truckContainer.offsetWidth - 110);
+
+            logArea.innerHTML = '';
+            log(`Démarrage. Capacité du camion fixée à ${capacity} kg.`, 'warning');
+            truckCapacityInput.disabled = true;
+
+            let globalTripCounter = 1;
+
+            // Loop through all points sequentially
+            for (let i = 0; i < targetPoints.length; i++) {
+                let point = targetPoints[i];
+
+                log(`== Début traitement de ${point.name} (${point.totalRequiredWeight} kg requis) ==`, 'info');
+                setPointStatus(point.id, 'En cours', 'active', `Livré: 0 / ${point.totalRequiredWeight} kg`);
+
+                // While point needs more cargo
+                while (point.remainingWeight > 0) {
+                    // Calculate Load: Truck can't load more than capacity AND can't load more than point needs
+                    let currentLoad = Math.min(capacity, point.remainingWeight);
+
+                    log(`-- VOYAGE GOBAL ${globalTripCounter} (Dest: ${point.name}) --`, 'warning');
+
+                    // 1. Loading
+                    destinationLabel.textContent = point.name;
+                    truckStatus.textContent = `[Voyage ${globalTripCounter}] Chargement de ${currentLoad} kg... (Reste ${point.remainingWeight} kg pour ${point.name})`;
+                    truckLoadLabel.style.display = 'block';
+                    truckLoadLabel.textContent = `${currentLoad} kg`;
+
+                    log(`[Dépôt] Le camion charge ${currentLoad} kg. (La capacité max de ${capacity} kg est respectée).`, 'success');
+                    await sleep(1500);
+
+                    // 2. Transitting
+                    truckStatus.textContent = `[Voyage ${globalTripCounter}] En transit vers ${point.name} avec ${currentLoad} kg.`;
+                    await animateTruck(0, routeDistancePX, false);
+
+                    // 3. Unloading
+                    truckStatus.textContent = `[Voyage ${globalTripCounter}] Déchargement de ${currentLoad} kg au ${point.name}.`;
+                    log(`Arrivé au ${point.name}. Déchargement de ${currentLoad} kg.`, 'info');
+                    await sleep(1500);
+
+                    point.remainingWeight -= currentLoad;
+                    point.deliveredWeight += currentLoad;
+
+                    // Update Point UI
+                    truckLoadLabel.style.display = 'none'; // Vide
+                    if (point.remainingWeight > 0) {
+                        log(`Déchargement fait. Il manque encore ${point.remainingWeight} kg pour ce point.`, 'warning');
+                        setPointStatus(point.id, 'Livraison Partielle', 'active', `Livré: ${point.deliveredWeight} / ${point.totalRequiredWeight} kg`);
+                    } else {
+                        log(`Déchargement fait. Le ${point.name} a reçu ses ${point.totalRequiredWeight} kg totaux !`, 'success');
+                        setPointStatus(point.id, 'Terminé', 'done', `Livré: ${point.deliveredWeight} / ${point.totalRequiredWeight} kg`);
+                    }
+
+                    // 4. Return to Depot
+                    truckStatus.textContent = `[Voyage ${globalTripCounter}] Retour au dépôt à vide.`;
+                    await animateTruck(routeDistancePX, 0, true);
+
+                    truckIcon.style.transform = `translateX(0px) scaleX(1)`;
+                    truckLoadLabel.style.transform = `scaleX(1)`;
+                    globalTripCounter++;
+                }
+            }
+
+            truckStatus.textContent = `MISSION TERMINÉE: Toutes les livraisons sont complètes. Camion au dépôt.`;
+            destinationLabel.textContent = `ATTENTE`;
+            log(`✅ Message Final : Tous les points ont été livrés. Total de ${globalTripCounter - 1} voyages effectués.`, 'success');
+
+            isSimulating = false;
+            truckCapacityInput.disabled = false;
+
+            // Re-render UI to put back remove buttons or allow new configs
+            updateUI();
+        });
+
+        // Initializer
+        updateUI();
+    </script>
+</body>
+
+</html>

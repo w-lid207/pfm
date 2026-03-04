@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Camions — CollecteOpt Agadir{% endblock %}
+
+{% block content %}
+<div class="container-fluid page-content">
+  <div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="fw-bold mb-1"><i class="bi bi-truck-front text-primary me-2"></i>Flotte de Camions</h2>
+      <p class="text-muted mb-0">Gestion et statuts de la flotte</p>
+    </div>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCamion">
+      <i class="bi bi-plus-lg me-1"></i>Ajouter Camion
+    </button>
+  </div>
+
+  <!-- Status Summary -->
+  <div class="row g-3 mb-4" id="camionStats"></div>
+
+  <!-- Camions Grid -->
+  <div class="row g-3" id="camionsGrid">
+    <div class="col-12 text-center py-4"><div class="spinner-border"></div></div>
+  </div>
+</div>
+
+<!-- Modal Ajout -->
+<div class="modal fade" id="modalCamion" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Ajouter un Camion</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Immatriculation *</label>
+          <input type="text" class="form-control" id="camImmat" placeholder="AG-005-E">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Modèle</label>
+          <input type="text" class="form-control" id="camModele" placeholder="Mercedes Econic 1830">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Capacité (m³)</label>
+          <input type="number" class="form-control" id="camCap" value="10" step="0.5">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" onclick="addCamion()">Ajouter</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STATUT_CONFIG = {
+  disponible: { badge: 'success', icon: 'bi-check-circle', text: 'Disponible' },
+  en_tournee: { badge: 'primary', icon: 'bi-truck', text: 'En tournée' },
+  panne:       { badge: 'danger',  icon: 'bi-exclamation-triangle', text: 'En panne' },
+  maintenance: { badge: 'warning', icon: 'bi-tools', text: 'Maintenance' },
+};
+
+async function loadCamions() {
+  try {
+    const data = await API_CALL('GET', '/api/camions');
+    const camions = data.camions || [];
+
+    // Stats
+    const counts = { disponible:0, en_tournee:0, panne:0, maintenance:0 };
+    camions.forEach(c => { if (c.statut in counts) counts[c.statut]++; });
+
+    document.getElementById('camionStats').innerHTML = Object.entries(STATUT_CONFIG).map(([k, v]) => `
+      <div class="col-6 col-md-3">
+        <div class="kpi-card kpi-${v.badge === 'success' ? 'green' : v.badge === 'primary' ? 'blue' : v.badge === 'danger' ? 'red' : 'orange'}">
+          <div class="kpi-icon"><i class="bi ${v.icon}"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-value">${counts[k]}</div>
+            <div class="kpi-label">${v.text}</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    // Grid
+    document.getElementById('camionsGrid').innerHTML = camions.map(c => {
+      const cfg = STATUT_CONFIG[c.statut] || STATUT_CONFIG.disponible;
+      return `
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header d-flex justify-content-between align-items-center bg-${cfg.badge} bg-opacity-10">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-truck-front fs-4 text-${cfg.badge}"></i>
+                <div>
+                  <div class="fw-bold">${c.immatriculation}</div>
+                  <small class="text-muted">${c.modele || 'Camion standard'}</small>
+                </div>
+              </div>
+              <span class="badge bg-${cfg.badge}"><i class="bi ${cfg.icon} me-1"></i>${cfg.text}</span>
+            </div>
+            <div class="card-body">
+              <div class="row text-center">
+                <div class="col-4">
+                  <div class="fw-bold fs-5 text-primary">${c.capacite_m3}</div>
+                  <small class="text-muted">m³</small>
+                </div>
+                <div class="col-4">
+                  <div class="fw-bold fs-5 text-success">${Math.round(c.km_total).toLocaleString()}</div>
+                  <small class="text-muted">km total</small>
+                </div>
+                <div class="col-4">
+                  <div class="fw-bold fs-5 text-info">${c.latitude ? '📍' : '--'}</div>
+                  <small class="text-muted">GPS</small>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer p-2">
+              <div class="btn-group btn-group-sm w-100">
+                <button class="btn btn-outline-success" onclick="changeStatut(${c.id},'disponible')" ${c.statut==='disponible'?'disabled':''}>Disponible</button>
+                <button class="btn btn-outline-danger" onclick="changeStatut(${c.id},'panne')" ${c.statut==='panne'?'disabled':''}>Panne</button>
+                <button class="btn btn-outline-warning" onclick="changeStatut(${c.id},'maintenance')" ${c.statut==='maintenance'?'disabled':''}>Maint.</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) { TOAST('Erreur chargement camions', 'danger'); }
+}
+
+async function changeStatut(id, statut) {
+  // Direct DB update via affectation endpoint workaround - use camion update
+  try {
+    const res = await fetch(`/api/camions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+      body: JSON.stringify({ statut }),
+    });
+    if (res.ok) { TOAST('Statut mis à jour', 'success'); loadCamions(); }
+    else TOAST('Non autorisé', 'warning');
+  } catch (e) { TOAST('Erreur', 'danger'); }
+}
+
+async function addCamion() {
+  const immat = document.getElementById('camImmat').value.trim();
+  const modele = document.getElementById('camModele').value.trim();
+  const cap = parseFloat(document.getElementById('camCap').value) || 10;
+  if (!immat) { TOAST('Immatriculation obligatoire', 'warning'); return; }
+  try {
+    await API_CALL('POST', '/api/camions', { immatriculation: immat, modele, capacite_m3: cap });
+    bootstrap.Modal.getInstance(document.getElementById('modalCamion')).hide();
+    TOAST('Camion ajouté', 'success');
+    loadCamions();
+  } catch (e) { TOAST(e.message, 'danger'); }
+}
+
+document.addEventListener('DOMContentLoaded', loadCamions);
+</script>
+{% endblock %}

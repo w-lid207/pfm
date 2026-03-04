@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camions — CollecteOpt</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .sim-body {
+            flex: 1;
+            display: flex;
+        }
+
+        .sim-map-area {
+            flex: 1;
+            position: relative;
+        }
+
+        #simMap {
+            width: 100%;
+            height: 100%;
+            min-height: calc(100vh - 52px);
+        }
+
+        .sim-panel {
+            width: 320px;
+            min-width: 320px;
+            background: #fff;
+            border-left: 1px solid var(--border-light);
+            padding: 0;
+            overflow-y: auto;
+            max-height: calc(100vh - 52px);
+        }
+
+        .sim-panel-section {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        /* Truck Cards */
+        .truck-card {
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border-card);
+            margin-bottom: 6px;
+            transition: border-color .2s ease;
+        }
+
+        .truck-card.active-truck {
+            border-color: var(--accent-blue);
+        }
+
+        .truck-card .truck-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .truck-card .truck-name {
+            font-weight: 600;
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .truck-status-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .truck-status-badge.moving {
+            background: rgba(22, 163, 74, .12);
+            color: var(--accent-green);
+        }
+
+        .truck-status-badge.paused {
+            background: rgba(234, 88, 12, .12);
+            color: var(--accent-orange);
+        }
+
+        .truck-status-badge.done {
+            background: rgba(37, 99, 235, .12);
+            color: var(--accent-blue);
+        }
+
+        .truck-status-badge.waiting {
+            background: rgba(0, 0, 0, .06);
+            color: var(--text-muted);
+        }
+
+        .truck-card .stat {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 2px 0;
+        }
+
+        .truck-card .stat b {
+            color: var(--text-primary);
+        }
+
+        .progress-bar {
+            height: 5px;
+            background: var(--border-light);
+            border-radius: 5px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width .15s ease;
+        }
+
+        /* Fuel Bar */
+        .fuel-bar-container {
+            margin-top: 6px;
+        }
+
+        .fuel-bar-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .fuel-bar-label b {
+            color: var(--text-primary);
+        }
+
+        .fuel-bar {
+            height: 6px;
+            background: var(--border-light);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .fuel-bar .fuel-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width .15s ease, background .3s ease;
+        }
+
+        .fuel-fill.fuel-high {
+            background: linear-gradient(90deg, #16A34A, #22C55E);
+        }
+
+        .fuel-fill.fuel-medium {
+            background: linear-gradient(90deg, #EA580C, #F59E0B);
+        }
+
+        .fuel-fill.fuel-low {
+            background: linear-gradient(90deg, #DC2626, #EF4444);
+        }
+
+        .truck-status-badge.refueling {
+            background: rgba(245, 158, 11, .15);
+            color: #D97706;
+        }
+
+        /* Alert Cards */
+        .alert-card {
+            padding: 10px 12px;
+            border-radius: var(--radius-xs);
+            border-left: 3px solid var(--accent-blue);
+            background: var(--bg-primary);
+            margin-bottom: 6px;
+            animation: alertSlideIn .3s ease;
+        }
+
+        .alert-card.alert-danger {
+            border-left-color: var(--accent-red);
+        }
+
+        .alert-card.alert-warning {
+            border-left-color: var(--accent-orange);
+        }
+
+        .alert-card.alert-success {
+            border-left-color: var(--accent-green);
+        }
+
+        .alert-card .alert-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .alert-card .alert-detail {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        @keyframes alertSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-badge-inline {
+            background: var(--accent-red);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            line-height: 18px;
+            text-align: center;
+            border-radius: 10px;
+            padding: 0 5px;
+            display: inline-block;
+        }
+
+        .sim-summary .stat {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 4px 0;
+        }
+
+        .sim-summary .stat b {
+            color: var(--text-primary);
+        }
+
+        .sim-actions {
+            display: flex;
+            gap: 6px;
+            padding: 12px 20px;
+            background: #fff;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .sim-actions .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .sim-actions .speed-control select {
+            padding: 4px 8px;
+            border: 1px solid var(--border-light);
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: var(--font);
+        }
+
+        #alertsList {
+            max-height: 220px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-layout">
+        <!-- ═══ SIDEBAR ═══ -->
+        <nav class="nav-sidebar" id="mainSidebar">
+            <div class="nav-brand">
+                <div>
+                    <h1>🚛 <span>CollecteOpt</span></h1>
+                    <p>Gestion intelligente de collecte</p>
+                </div>
+                <button class="collapse-btn" onclick="toggleSidebar()" title="Réduire">☰</button>
+            </div>
+
+            <!-- Mini Dashboard -->
+            <div class="mini-dashboard">
+                <div class="mini-dash-grid">
+                    <div class="mini-dash-item active-item">
+                        <div class="mini-dash-value" id="miniTrucks">0</div>
+                        <div class="mini-dash-label">Camions actifs</div>
+                    </div>
+                    <div class="mini-dash-item urgent">
+                        <div class="mini-dash-value" id="miniUrgent">0</div>
+                        <div class="mini-dash-label">Points urgents</div>
+                    </div>
+                    <div class="mini-dash-item">
+                        <div class="mini-dash-value" id="miniFill">0%</div>
+                        <div class="mini-dash-label">Remplissage moy.</div>
+                    </div>
+                    <div class="mini-dash-item">
+                        <div class="mini-dash-value" id="miniCO2">--</div>
+                        <div class="mini-dash-label">CO₂ estimé</div>
+                        <div class="mini-dash-sub">kg</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="nav-search">
+                <div class="nav-search-wrapper">
+                    <input type="text" placeholder="Rechercher..." id="sidebarSearch"
+                        oninput="filterSidebar(this.value)">
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="nav-links">
+                <div class="sidebar-section-title">Navigation</div>
+                <a href="/dashboard" class="nav-link">
+                    <span class="icon">📊</span><span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/carte" class="nav-link active">
+                    <span class="icon">🗺️</span><span class="nav-text">Carte & Simulation</span>
+                </a>
+
+                <div class="sidebar-section-title">Système</div>
+                <a href="#" class="nav-link"
+                    onclick="document.getElementById('alertsList')?.scrollIntoView({behavior:'smooth'}); return false;">
+                    <span class="icon">⚠️</span><span class="nav-text">Alertes</span>
+                    <span class="nav-alert-badge" id="navAlertBadge">0</span>
+                </a>
+
+            </div>
+
+            <div class="nav-footer">
+                <a href="/logout" class="nav-link">
+                    <span class="icon">🚪</span><span class="nav-text">Déconnexion</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- ═══ MAIN ═══ -->
+        <div class="page-main">
+            <div class="page-header">
+                <h2>🚛 Simulation — Camions</h2>
+                <div class="badge">
+                    <div class="dot"></div> Admin connecté
+                </div>
+            </div>
+
+            <div class="sim-actions"
+                style="display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: #fff; border-bottom: 1px solid var(--border-light);">
+                <select id="benchmarkSelector" class="form-control"
+                    style="width: auto; padding: 6px 12px; font-size: 13px; border-radius: var(--radius-xs); border: 1px solid var(--border-light);">
+                    <option value="">-- Simulation Standard --</option>
+                    <option value="petit">Test Petit (5 camions, 50 points)</option>
+                    <option value="intermediaire">Test Intermédiaire (10 camions, 100 points)</option>
+                    <option value="grand">Test Grand (20 camions, 500 points)</option>
+                </select>
+                <button class="btn btn-primary btn-sm" style="width:auto" onclick="startSim()" id="btnStartSim">▶
+                    Démarrer Simulation</button>
+                <button class="btn btn-outline btn-sm" style="width:auto" onclick="pauseSim()">⏸ Pause</button>
+                <button class="btn btn-outline btn-sm" style="width:auto" onclick="stopSim()">⏹ Arrêter</button>
+                <div class="speed-control">
+                    <span>Vitesse</span>
+                    <select id="speedSelect" onchange="changeSpeed(this.value)">
+                        <option value="1000">x1 (Normal)</option>
+                        <option value="500">x2 (Rapide)</option>
+                        <option value="200" selected>x5 (Très Rapide)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Benchmark Results Area (Hidden by default) -->
+            <div id="benchmarkResultsBox"
+                style="display: none; padding: 15px; margin: 15px 20px 0 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <h3
+                    style="font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size:16px;">📊</span> Résultats du Test
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;"
+                    id="benchmarkMetricsGrid">
+                    <!-- Metrics injected here -->
+                </div>
+                <div
+                    style="max-height: 200px; overflow-y: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: var(--radius-xs);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+                        <thead style="background: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
+                            <tr>
+                                <th style="padding: 8px; font-weight: 600;">Camion</th>
+                                <th style="padding: 8px; font-weight: 600;">Distance (km)</th>
+                                <th style="padding: 8px; font-weight: 600;">Tonnage (kg)</th>
+                                <th style="padding: 8px; font-weight: 600; color: #2563eb;">Ton/km</th>
+                                <th style="padding: 8px; font-weight: 600;">Voyages</th>
+                            </tr>
+                        </thead>
+                        <tbody id="benchmarkTruckResults">
+                            <!-- Truck results injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="sim-body">
+                <div class="sim-map-area">
+                    <div id="simMap"></div>
+                </div>
+                <div class="sim-panel">
+                    <!-- Truck Statuses -->
+                    <div class="sim-panel-section">
+                        <div class="section-title"><span class="icon">🚛</span> Camions</div>
+                        <div id="truckStatuses">
+                            <div style="font-size:12px;color:var(--text-muted);padding:10px">
+                                Lancez une optimisation depuis la carte d'abord.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Landfill Info -->
+                    <div class="sim-panel-section">
+                        <div class="section-title"><span class="icon">🏗️</span> Décharge</div>
+                        <div id="landfillStatus">
+                            <div class="stat" style="font-size:12px">Position: <b>30.38, -9.55</b></div>
+                            <div class="stat" style="font-size:12px">Camions passés: <b id="landfillVisits">0</b></div>
+                            <div class="stat" style="font-size:12px">Total déchargé: <b id="landfillTotal">0</b> kg
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alerts -->
+                    <div class="sim-panel-section">
+                        <div class="section-title">
+                            <span class="icon">🔔</span> Alertes
+                            <span class="alert-badge-inline" id="alertBadge" style="margin-left:auto">0</span>
+                        </div>
+                        <div id="alertsList">
+                            <div style="font-size:11px;color:var(--text-muted);padding:6px">Aucune alerte</div>
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="sim-panel-section sim-summary">
+                        <div class="section-title" style="margin-bottom:8px"><span class="icon">📊</span> Résumé</div>
+                        <div class="stat">Pas: <b id="simStep">0</b></div>
+                        <div class="stat">Terminés: <b id="simDone">0</b> / <b id="simTotal">0</b></div>
+                        <div class="stat">Collecté: <b id="simCollected">0</b> kg</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ═══════════════════════════════════════════════════════
+        // SIDEBAR CONTROLS
+        // ═══════════════════════════════════════════════════════
+        function toggleSidebar() {
+            document.getElementById('mainSidebar').classList.toggle('collapsed');
+        }
+
+        function filterSidebar(q) {
+            const links = document.querySelectorAll('.nav-link');
+            q = q.toLowerCase();
+            links.forEach(l => {
+                const text = l.textContent.toLowerCase();
+                l.style.display = (!q || text.includes(q)) ? '' : 'none';
+            });
+        }
+
+        function showAlertHistory() { /* scroll to alerts in sim panel */ }
+        function toggleSettings() { /* placeholder */ }
+
+        // ═══════════════════════════════════════════════════════
+        // CONFIGURATION
+        // ═══════════════════════════════════════════════════════
+        const COLORS = ['#2563EB', '#DC2626', '#16A34A', '#EA580C', '#7C3AED', '#0891B2', '#DB2777', '#65A30D'];
+        const LANDFILL = { lat: 30.38, lng: -9.55, nom: 'Décharge Municipale' };
+
+        // ── FUEL STATIONS ──
+        const FUEL_STATIONS = [
+            { lat: 30.4320, lng: -9.5850, nom: 'Station Afriquia – Centre' },
+            { lat: 30.4050, lng: -9.5720, nom: 'Station Shell – Hay Mohammadi' },
+            { lat: 30.4480, lng: -9.6100, nom: 'Station Total – Route Essaouira' },
+            { lat: 30.3900, lng: -9.5400, nom: 'Station Winxo – Zone Industrielle' },
+        ];
+        const FUEL_CAPACITY = 200;   // liters
+        const FUEL_CONSUMPTION_KM = 0.35;  // liters per km
+        const FUEL_THRESHOLD_PCT = 0.15;  // 15% → trigger refueling
+
+        let simMap, simInterval, stepCount = 0, isPaused = false;
+        let trucks = [];
+        let routeData = null;
+        let alerts = [];
+        let alertCount = 0;
+        let simSpeed = 40;
+        let landfillVisitCount = 0;
+        let landfillTotalKg = 0;
+
+        // ═══════════════════════════════════════════════════════
+        // UTILITIES
+        // ═══════════════════════════════════════════════════════
+        function interpolateRoute(coords, stepMeters = 20) {
+            if (!coords || coords.length < 2) return coords || [];
+            const result = [coords[0]];
+            for (let i = 0; i < coords.length - 1; i++) {
+                const [lat1, lng1] = coords[i];
+                const [lat2, lng2] = coords[i + 1];
+                const d = haversineMeters(lat1, lng1, lat2, lng2);
+                if (d <= stepMeters) { result.push(coords[i + 1]); continue; }
+                const n = Math.ceil(d / stepMeters);
+                for (let s = 1; s <= n; s++) {
+                    const t = s / n;
+                    result.push([lat1 + (lat2 - lat1) * t, lng1 + (lng2 - lng1) * t]);
+                }
+            }
+            return result;
+        }
+
+        function haversineMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // OSRM ROUTING (via backend proxy)
+        // ═══════════════════════════════════════════════════════
+        async function fetchFullOSRMRoute(waypoints) {
+            if (!waypoints || waypoints.length < 2) return waypoints || [];
+            try {
+                const resp = await fetch('/api/osrm-route', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ coordinates: waypoints }),
+                });
+                const data = await resp.json();
+                if (data.coordinates && data.coordinates.length >= 2) {
+                    return data.coordinates;
+                }
+            } catch (e) { console.warn('Backend OSRM route failed:', e); }
+            return waypoints;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // INITIALIZATION & MAP SETUP
+        // ═══════════════════════════════════════════════════════
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadSimulationData();
+        });
+
+        function initMap() {
+            simMap = L.map('simMap', { zoomControl: false }).setView([30.42, -9.59], 12);
+            L.control.zoom({ position: 'topright' }).addTo(simMap);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors © CARTO',
+                subdomains: 'abcd', maxZoom: 20
+            }).addTo(simMap);
+
+            L.marker([LANDFILL.lat, LANDFILL.lng], {
+                icon: L.divIcon({
+                    className: 'landfill-icon',
+                    html: '<div style="font-size:24px;text-align:center;text-shadow:0 2px 4px rgba(0,0,0,0.2)">🏗️</div>',
+                    iconSize: [30, 30], iconAnchor: [15, 15]
+                })
+            }).addTo(simMap).bindTooltip("<b>Décharge Municipale</b>", { permanent: true, direction: 'right' });
+
+            // Draw fuel stations
+            FUEL_STATIONS.forEach(fs => {
+                L.marker([fs.lat, fs.lng], {
+                    icon: L.divIcon({
+                        className: 'fuel-station-icon',
+                        html: '<div style="font-size:20px;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,0.3)">⛽</div>',
+                        iconSize: [24, 24], iconAnchor: [12, 12]
+                    })
+                }).addTo(simMap).bindTooltip(`<b>${fs.nom}</b>`, { direction: 'top' });
+            });
+        }
+
+        async function loadSimulationData() {
+            try {
+                const resp = await fetch('/api/results');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data && data.success && data.routes) {
+                    routeData = processLegacyResults(data);
+                    addAlert('success', 'Données chargées', 'Les routes standard sont prêtes pour la simulation');
+                    document.getElementById('truckStatuses').innerHTML = `
+                        <div style="font-size:12px;color:var(--text-muted);padding:10px">
+                            ${routeData.vrp.routes.length} camions prêts au départ.
+                        </div>`;
+                }
+            } catch (e) { console.error('Erreur chargement sim:', e); }
+        }
+
+        function processLegacyResults(data) {
+            // Conversion if needed mapping /api/results structure to standard
+            return {
+                depot: data.depot || { lat: 30.4278, lng: -9.5981 },
+                vrp: { routes: data.routes || [] }
+            };
+        }
+
+        async function runBenchmark(testId) {
+            let camions = 5, points = 50;
+            if (testId === 'intermediaire') { camions = 10; points = 100; }
+            if (testId === 'grand') { camions = 20; points = 500; }
+
+            const btn = document.getElementById('btnStartSim');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Génération en cours...';
+
+            try {
+                const resp = await fetch('/api/run-benchmark', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ camions, points })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    displayBenchmarkResults(data);
+
+                    // Convert benchmark data to simulation format
+                    routeData = {
+                        depot: data.depot,
+                        vrp: { routes: data.vrp_routes || [] }
+                    };
+
+                    // Clear existing map layers (except base, landfill, gas stations)
+                    simMap.eachLayer((layer) => {
+                        if (layer instanceof L.TileLayer) return;
+                        if (layer.options && (layer.options.icon?.options?.className === 'landfill-icon' || layer.options.icon?.options?.className === 'fuel-station-icon')) return;
+                        simMap.removeLayer(layer);
+                    });
+
+                    startSimulationWithData();
+                } else {
+                    addAlert('danger', 'Erreur Benchmark', data.error || 'Erreur inconnue');
+                }
+            } catch (e) {
+                addAlert('danger', 'Erreur réseau', e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '▶ Démarrer Simulation';
+            }
+        }
+
+        function displayBenchmarkResults(data) {
+            document.getElementById('benchmarkResultsBox').style.display = 'block';
+
+            const perf = data.performance;
+            const res = data.resultats;
+            const grid = document.getElementById('benchmarkMetricsGrid');
+
+            grid.innerHTML = `
+                <div style="background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 18px; font-weight: 700; color: #2563eb;">${perf.temps_total_ms.toFixed(0)} ms</div>
+                    <div style="font-size: 10px; text-transform: uppercase; color: #64748b;">Temps Calc.</div>
+                </div>
+                <div style="background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 18px; font-weight: 700; color: #16a34a;">${res.distance_totale_km.toFixed(1)} km</div>
+                    <div style="font-size: 10px; text-transform: uppercase; color: #64748b;">Distance</div>
+                </div>
+                <div style="background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 18px; font-weight: 700; color: #ea580c;">${(res.tonnage_total_kg / 1000).toFixed(1)} t</div>
+                    <div style="font-size: 10px; text-transform: uppercase; color: #64748b;">Tonnage</div>
+                </div>
+                <div style="background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 18px; font-weight: 700; color: #9333ea;">${res.tonnage_par_km_moyen.toFixed(1)}</div>
+                    <div style="font-size: 10px; text-transform: uppercase; color: #64748b;">Ton/km Moy.</div>
+                </div>
+            `;
+
+            const tbody = document.getElementById('benchmarkTruckResults');
+            let tDist = 0, tTon = 0, tTrips = 0;
+            const details = data.camions_detail || [];
+            tbody.innerHTML = details.map(m => {
+                tDist += m.distance_km;
+                tTon += m.tonnage_collecte_kg;
+                tTrips += m.nb_voyages_decharge;
+                return `<tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${m.camion_nom}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${m.distance_km.toFixed(2)}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${m.tonnage_collecte_kg.toFixed(0)}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 600;">${m.tonnage_par_km.toFixed(1)}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${m.nb_voyages_decharge}</td>
+                </tr>`;
+            }).join('');
+
+            const avgTonKm = details.length ? (details.reduce((s, m) => s + m.tonnage_par_km, 0) / details.length).toFixed(1) : 0;
+            tbody.innerHTML += `
+                <tr style="background: #f8fafc; font-weight: 700;">
+                    <td style="padding: 8px;">TOTAL / MOYENNE</td>
+                    <td style="padding: 8px;">${tDist.toFixed(2)}</td>
+                    <td style="padding: 8px;">${tTon.toFixed(0)}</td>
+                    <td style="padding: 8px;">${avgTonKm}</td>
+                    <td style="padding: 8px;">${tTrips}</td>
+                </tr>
+            `;
+        }
+
+        async function startSim() {
+            const testId = document.getElementById('benchmarkSelector').value;
+            if (testId) {
+                await runBenchmark(testId);
+            } else {
+                document.getElementById('benchmarkResultsBox').style.display = 'none';
+                startSimulationWithData();
+            }
+        }
+
+        async function startSimulationWithData() {
+            if (!routeData || !routeData.vrp || !routeData.vrp.routes || routeData.vrp.routes.length === 0) {
+                addAlert('warning', 'Aucune route', 'Veuillez effectuer une optimisation ou charger un test avant de démarrer');
+                return;
+            }
+            if (simInterval) clearInterval(simInterval);
+            stepCount = 0;
+            trucks = [];
+            landfillVisitCount = 0;
+            landfillTotalKg = 0;
+            document.getElementById('truckStatuses').innerHTML = '';
+            document.getElementById('simTotal').textContent = routeData.vrp.routes.length;
+            document.getElementById('truckStatuses').innerHTML = '';
+
+            const depot = [routeData.depot.lat, routeData.depot.lng];
+
+            // Setup trucks concurrently using Promise.all for route requests
+            const setupPromises = routeData.vrp.routes.map(async (route, idx) => {
+                const color = COLORS[idx % COLORS.length];
+                const capacity = route.capacite || 5000;
+                let rawCoords = route.coordinates || [];
+
+                // Re-fetch detailed OSRM coords if basic
+                if (rawCoords.length <= (route.visits ? route.visits.length + 2 : 2)) {
+                    const waypoints = [depot];
+                    (route.visits || []).forEach(v => waypoints.push([v.lat, v.lng]));
+                    waypoints.push(depot);
+                    rawCoords = await fetchFullOSRMRoute(waypoints);
+                }
+
+                const displayCoords = interpolateRoute(rawCoords, 20); // 20m steps
+                return createTruckReadyObject(route, idx, color, capacity, displayCoords);
+            });
+
+            const trucksData = await Promise.all(setupPromises);
+
+            // Create UI and map elements sequentially to ensure correct DOM order
+            trucksData.forEach((t) => {
+                trucks.push(t);
+
+                // Construct UI Cards
+                const card = document.createElement('div');
+                card.className = 'truck-card active-truck';
+                card.id = `truckCard${t.idx}`;
+                card.innerHTML = `
+                    <div class="truck-header">
+                        <div class="truck-color-dot" style="width:12px;height:12px;border-radius:50%;background:${t.color}"></div>
+                        <div class="truck-name">${t.route.camion_nom || 'Camion ' + (t.idx + 1)}</div>
+                        <div id="truckBadge${t.idx}" class="truck-status-badge waiting">En attente</div>
+                    </div>
+                    <div class="stat">Charge: <b id="truckLoad${t.idx}">0</b> / ${t.capacity} kg</div>
+                    
+                    <div class="fuel-bar-container">
+                        <div class="fuel-bar-label">
+                            <span style="font-size:12px">⛽</span> Carburant: <b id="truckFuelText${t.idx}">${t.fuelCapacity.toFixed(1)}</b> L
+                        </div>
+                        <div class="fuel-bar"><div id="truckFuelBar${t.idx}" class="fuel-fill fuel-high" style="width:100%"></div></div>
+                    </div>
+
+                    <div class="stat" id="truckProgress${t.idx}">Progression: 0%</div>
+                    <div class="progress-bar"><div id="truckBar${t.idx}" class="fill" style="background:${t.color}; width:0%"></div></div>
+                `;
+                document.getElementById('truckStatuses').appendChild(card);
+            });
+
+            addAlert('info', 'Simulation démarrée', `${trucks.length} camions en mouvement`);
+            isPaused = false;
+            simInterval = setInterval(simTick, simSpeed);
+        }
+
+        // Helper to construct truck objects before putting them on the map
+        function createTruckReadyObject(route, idx, color, capacity, displayCoords) {
+            // Re-map visit triggers based on interpolated coords
+            const visitTriggers = [];
+            (route.visits || []).forEach(v => {
+                let bestIdx = 0, bestDist = Infinity;
+                displayCoords.forEach((c, i) => {
+                    const d = haversineMeters(c[0], c[1], v.lat, v.lng);
+                    if (d < bestDist) { bestDist = d; bestIdx = i; }
+                });
+                visitTriggers.push({
+                    stepIdx: bestIdx,
+                    volume: v.quantite_collectee || 0,
+                    isLandfill: v.is_landfill_trip || false
+                });
+            });
+            visitTriggers.sort((a, b) => a.stepIdx - b.stepIdx);
+
+            const smoothCoords = displayCoords; // Avoid applying smoothstep directly
+
+            // Add Marker
+            const marker = L.marker(smoothCoords[0], {
+                icon: L.divIcon({
+                    className: 'truck-icon-anim',
+                    html: `<div style="font-size:20px;text-align:center;color:${color};text-shadow:0 0 2px #fff">🚛</div>`,
+                    iconSize: [34, 34],
+                    iconAnchor: [17, 17],
+                }),
+                zIndexOffset: 1000 + idx,
+            }).addTo(simMap);
+
+            const trail = L.polyline([], { color, weight: 3, opacity: 0.4, dashArray: '4 6' }).addTo(simMap);
+
+            return {
+                idx, marker, coords: smoothCoords, step: 0, done: false,
+                status: 'moving', trail, route, color,
+                capacity,
+                currentLoad: 0,
+                visitTriggers,
+                nextTrigger: 0,
+                tripsToLandfill: 0,
+                totalDumped: 0,
+                // ── Fuel properties ──
+                fuelCapacity: FUEL_CAPACITY,
+                currentFuel: FUEL_CAPACITY,
+                fuelConsumption: FUEL_CONSUMPTION_KM,
+                fuelThreshold: FUEL_CAPACITY * FUEL_THRESHOLD_PCT,
+                isRefueling: false,
+                refuelPhase: null,
+                savedCoords: null,
+                savedStep: 0,
+                savedVisitTriggers: null,
+                savedNextTrigger: 0,
+                fuelAlertFired: false,
+                refuelCount: 0,
+            };
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // ALERTS SYSTEM
+        // ═══════════════════════════════════════════════════════
+        function addAlert(type, title, detail) {
+            const cssClass = type === 'danger' ? 'alert-danger' :
+                type === 'warning' ? 'alert-warning' :
+                    type === 'success' ? 'alert-success' : '';
+            const icon = type === 'danger' ? '🔴' :
+                type === 'warning' ? '⏰' :
+                    type === 'success' ? '✅' : 'ℹ️';
+            const now = new Date();
+            const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            alerts.unshift({ type, title, detail, time, icon, cssClass });
+            alertCount++;
+            renderAlerts();
+            updateNavAlertBadge();
+        }
+
+        function renderAlerts() {
+            const container = document.getElementById('alertsList');
+            const badge = document.getElementById('alertBadge');
+            if (badge) badge.textContent = alertCount;
+
+            if (alerts.length === 0) {
+                container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:6px">Aucune alerte</div>';
+                return;
+            }
+            container.innerHTML = alerts.slice(0, 30).map(a => `
+                <div class="alert-card ${a.cssClass}">
+                    <div class="alert-title">${a.icon} ${a.title}</div>
+                    <div class="alert-detail">${a.detail} · ${a.time}</div>
+                </div>
+            `).join('');
+        }
+
+        function updateNavAlertBadge() {
+            const el = document.getElementById('navAlertBadge');
+            if (el) {
+                el.textContent = alertCount;
+                el.setAttribute('data-count', alertCount);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // MINI DASHBOARD UPDATE
+        // ═══════════════════════════════════════════════════════
+        function updateMiniDashboard() {
+            const activeTrucks = trucks.filter(t => !t.done).length;
+            document.getElementById('miniTrucks').textContent = activeTrucks;
+
+            // Estimate CO2 (0.9 kg/km average)
+            if (routeData && routeData.vrp) {
+                const routes = routeData.vrp.routes || [];
+                const totalDist = routes.reduce((s, r) => s + (r.distance_km || 0), 0);
+                document.getElementById('miniCO2').textContent = (totalDist * 0.9).toFixed(1);
+
+                // Count urgent points (fill >= 80%)
+                let urgentCount = 0;
+                let totalFill = 0;
+                let pointCount = 0;
+                routes.forEach(r => {
+                    (r.visits || []).forEach(v => {
+                        const fill = ((v.quantite_collectee || 0) / (v.volume_total || 1)) * 100;
+                        if (fill >= 80) urgentCount++;
+                        totalFill += fill;
+                        pointCount++;
+                    });
+                });
+                document.getElementById('miniUrgent').textContent = urgentCount;
+                document.getElementById('miniFill').textContent =
+                    pointCount > 0 ? Math.round(totalFill / pointCount) + '%' : '0%';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // FUEL HELPERS
+        // ═══════════════════════════════════════════════════════
+        function findNearestStation(lat, lng) {
+            let best = null, bestDist = Infinity;
+            FUEL_STATIONS.forEach(fs => {
+                const d = haversineMeters(lat, lng, fs.lat, fs.lng);
+                if (d < bestDist) { bestDist = d; best = fs; }
+            });
+            return best;
+        }
+
+        function buildDetourPath(fromLat, fromLng, toLat, toLng, stepM = 20) {
+            const d = haversineMeters(fromLat, fromLng, toLat, toLng);
+            const n = Math.max(2, Math.ceil(d / stepM));
+            const pts = [];
+            for (let i = 0; i <= n; i++) {
+                const frac = i / n;
+                pts.push([fromLat + (toLat - fromLat) * frac, fromLng + (toLng - fromLng) * frac]);
+            }
+            return pts;
+        }
+
+        function startRefuelDetour(t, idx) {
+            const [curLat, curLng] = t.coords[t.step] || t.coords[t.coords.length - 1];
+            const station = findNearestStation(curLat, curLng);
+            if (!station) return;
+
+            // Save current route state
+            t.savedCoords = t.coords;
+            t.savedStep = t.step;
+            t.savedVisitTriggers = t.visitTriggers;
+            t.savedNextTrigger = t.nextTrigger;
+
+            // Build path to station
+            const toStation = buildDetourPath(curLat, curLng, station.lat, station.lng);
+            t.coords = toStation;
+            t.step = 0;
+            t.visitTriggers = [];
+            t.nextTrigger = 0;
+            t.isRefueling = true;
+            t.refuelPhase = 'to_station';
+            t.refuelStation = station;
+            t.fuelAlertFired = true;
+            t.status = 'refueling';
+
+            addAlert('warning', `Camion ${idx + 1} carburant faible`,
+                `${t.currentFuel.toFixed(1)} L restants — direction ${station.nom}`);
+        }
+
+        function getFuelBarClass(pct) {
+            if (pct > 50) return 'fuel-high';
+            if (pct > 20) return 'fuel-medium';
+            return 'fuel-low';
+        }
+
+        function simTick() {
+            if (isPaused) return;
+            stepCount++;
+            document.getElementById('simStep').textContent = stepCount;
+            let doneCount = 0;
+            let totalCollected = 0;
+
+            trucks.forEach((t, idx) => {
+                if (t.done) { doneCount++; totalCollected += t.totalDumped; return; }
+
+                // ── Fuel = 0 guard ──
+                if (t.currentFuel <= 0) {
+                    t.currentFuel = 0;
+                    t.status = 'out_of_fuel';
+                    if (!t._outOfFuelAlerted) {
+                        addAlert('danger', `Camion ${idx + 1} en panne sèche`, 'Carburant épuisé — camion immobilisé');
+                        t._outOfFuelAlerted = true;
+                    }
+                    totalCollected += t.currentLoad + t.totalDumped;
+                    updateTruckUI(t, idx);
+                    return;
+                }
+
+                // ── Pre-emptive fuel check (before moving) ──
+                if (!t.isRefueling && !t.done && t.step < t.coords.length - 1) {
+                    // Estimate fuel needed to reach next collection point
+                    if (t.nextTrigger < t.visitTriggers.length) {
+                        const nextVT = t.visitTriggers[t.nextTrigger];
+                        const stepsToNext = nextVT.stepIdx - t.step;
+                        const estDistKm = stepsToNext * 0.02; // ~20m per step
+                        const fuelNeeded = estDistKm * t.fuelConsumption;
+                        if (t.currentFuel < fuelNeeded && t.currentFuel <= t.fuelThreshold * 1.5) {
+                            startRefuelDetour(t, idx);
+                        }
+                    }
+                    // Also check threshold
+                    if (!t.isRefueling && t.currentFuel <= t.fuelThreshold && !t.fuelAlertFired) {
+                        startRefuelDetour(t, idx);
+                    }
+                }
+
+                // ── Advance step ──
+                t.step++;
+
+                if (t.step >= t.coords.length) {
+                    // ── Handle refueling phases ──
+                    if (t.isRefueling && t.refuelPhase === 'to_station') {
+                        // Arrived at fuel station → refuel
+                        t.currentFuel = t.fuelCapacity;
+                        t.refuelCount++;
+                        addAlert('success', `Camion ${idx + 1} ravitaillé`,
+                            `Plein effectué à ${t.refuelStation.nom} — ${t.fuelCapacity} L · Ravitaillement #${t.refuelCount}`);
+
+                        // Build return path to saved position
+                        const stationPos = t.coords[t.coords.length - 1];
+                        const resumePos = t.savedCoords[t.savedStep];
+                        const returnPath = buildDetourPath(stationPos[0], stationPos[1], resumePos[0], resumePos[1]);
+                        t.coords = returnPath;
+                        t.step = 0;
+                        t.refuelPhase = 'to_route';
+                        t.status = 'returning';
+                        updateTruckUI(t, idx);
+                        return;
+                    }
+
+                    if (t.isRefueling && t.refuelPhase === 'to_route') {
+                        // Returned to original route → resume
+                        t.coords = t.savedCoords;
+                        t.step = t.savedStep;
+                        t.visitTriggers = t.savedVisitTriggers;
+                        t.nextTrigger = t.savedNextTrigger;
+                        t.isRefueling = false;
+                        t.refuelPhase = null;
+                        t.fuelAlertFired = false;
+                        t.status = 'moving';
+                        addAlert('info', `Camion ${idx + 1} reprend sa tournée`,
+                            `Carburant: ${t.currentFuel.toFixed(1)} L`);
+                        updateTruckUI(t, idx);
+                        return;
+                    }
+
+                    // ── Normal route completion ──
+                    t.done = true; t.status = 'done';
+                    if (t.currentLoad > 0) {
+                        t.tripsToLandfill++;
+                        t.totalDumped += t.currentLoad;
+                        landfillVisitCount++;
+                        landfillTotalKg += t.currentLoad;
+                        t.currentLoad = 0;
+                        addAlert('success', `Camion ${idx + 1} terminé`, `Vidé — ${t.totalDumped} kg total déchargés · ${t.tripsToLandfill} vidange(s)`);
+                        document.getElementById('landfillVisits').textContent = landfillVisitCount;
+                        document.getElementById('landfillTotal').textContent = landfillTotalKg;
+                    }
+                    doneCount++;
+                } else {
+                    // ── Move marker ──
+                    const [lat, lng] = t.coords[t.step];
+                    t.marker.setLatLng([lat, lng]);
+                    t.trail.addLatLng([lat, lng]);
+
+                    // ── Fuel consumption ──
+                    if (t.step > 0) {
+                        const [pLat, pLng] = t.coords[t.step - 1];
+                        const distM = haversineMeters(pLat, pLng, lat, lng);
+                        const distKm = distM / 1000;
+                        t.currentFuel -= distKm * t.fuelConsumption;
+                        if (t.currentFuel < 0) t.currentFuel = 0;
+                    }
+
+                    // ── Check visit triggers (only on normal route) ──
+                    if (!t.isRefueling && t.nextTrigger < t.visitTriggers.length) {
+                        const trigger = t.visitTriggers[t.nextTrigger];
+                        if (t.step >= trigger.stepIdx) {
+                            t.nextTrigger++;
+
+                            if (trigger.isLandfill) {
+                                t.tripsToLandfill++;
+                                t.totalDumped += t.currentLoad;
+                                landfillVisitCount++;
+                                landfillTotalKg += t.currentLoad;
+                                t.currentLoad = 0;
+                                t.status = 'landfill';
+                                addAlert('info', `Camion ${idx + 1} à la décharge`, `Vidange #${t.tripsToLandfill} — ${t.totalDumped} kg total`);
+                                document.getElementById('landfillVisits').textContent = landfillVisitCount;
+                                document.getElementById('landfillTotal').textContent = landfillTotalKg;
+                            } else {
+                                t.currentLoad += trigger.volume;
+                                t.status = 'collecting';
+                            }
+                        }
+                    }
+                }
+
+                totalCollected += t.currentLoad + t.totalDumped;
+                updateTruckUI(t, idx);
+            });
+
+            document.getElementById('simDone').textContent = doneCount;
+            document.getElementById('simCollected').textContent = totalCollected;
+            updateMiniDashboard();
+
+            if (doneCount === trucks.length && trucks.length > 0) {
+                addAlert('success', 'Simulation terminée', `Tous les ${trucks.length} camions ont terminé`);
+                stopSim();
+            }
+        }
+
+        function updateTruckUI(t, idx) {
+            // Progress
+            const pct = t.isRefueling ? '—' : Math.round((t.step / Math.max(1, t.coords.length - 1)) * 100);
+            const loadEl = document.getElementById(`truckLoad${idx}`);
+            if (loadEl) loadEl.textContent = t.currentLoad;
+            const progEl = document.getElementById(`truckProgress${idx}`);
+            if (progEl) progEl.textContent = t.isRefueling ? 'Ravitaillement en cours' : `Progression: ${pct}%`;
+            const barEl = document.getElementById(`truckBar${idx}`);
+            if (barEl && !t.isRefueling) barEl.style.width = `${pct}%`;
+
+            // Fuel bar
+            const fuelPct = Math.max(0, (t.currentFuel / t.fuelCapacity) * 100);
+            const fuelTextEl = document.getElementById(`truckFuelText${idx}`);
+            if (fuelTextEl) fuelTextEl.textContent = t.currentFuel.toFixed(1);
+            const fuelBarEl = document.getElementById(`truckFuelBar${idx}`);
+            if (fuelBarEl) {
+                fuelBarEl.style.width = `${fuelPct}%`;
+                fuelBarEl.className = `fuel-fill ${getFuelBarClass(fuelPct)}`;
+            }
+
+            // Badge
+            const badgeEl = document.getElementById(`truckBadge${idx}`);
+            if (badgeEl) {
+                if (t.done) { badgeEl.textContent = 'Terminé'; badgeEl.className = 'truck-status-badge done'; }
+                else if (t.status === 'out_of_fuel') { badgeEl.textContent = '⛽ Panne sèche'; badgeEl.className = 'truck-status-badge refueling'; }
+                else if (t.isRefueling) { badgeEl.textContent = '⛽ Ravitaillement'; badgeEl.className = 'truck-status-badge refueling'; }
+                else if (t.status === 'landfill') { badgeEl.textContent = `Vidange #${t.tripsToLandfill}`; badgeEl.className = 'truck-status-badge paused'; }
+                else { badgeEl.textContent = 'En mouvement'; badgeEl.className = 'truck-status-badge moving'; }
+            }
+            const cardEl = document.getElementById(`truckCard${idx}`);
+            if (cardEl) cardEl.classList.toggle('active-truck', !t.done);
+        }
+
+        function pauseSim() {
+            if (simInterval) {
+                clearInterval(simInterval); isPaused = true;
+                trucks.forEach((t, idx) => {
+                    if (!t.done) {
+                        t.status = 'paused';
+                        const badgeEl = document.getElementById(`truckBadge${idx}`);
+                        if (badgeEl) { badgeEl.textContent = 'En pause'; badgeEl.className = 'truck-status-badge paused'; }
+                    }
+                });
+            }
+        }
+
+        function stopSim() {
+            if (simInterval) { clearInterval(simInterval); simInterval = null; }
+            isPaused = false;
+        }
+
+        function changeSpeed() {
+            simSpeed = parseInt(document.getElementById('speedSelect').value);
+            if (simInterval && !isPaused) {
+                clearInterval(simInterval);
+                simInterval = setInterval(simTick, simSpeed);
+            }
+        }
+    </script>
+</body>
+
+</html>

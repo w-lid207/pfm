@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion — CollecteOpt Agadir</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="login-body">
+
+<div class="login-container">
+  <!-- Left panel - Illustration -->
+  <div class="login-left d-none d-lg-flex">
+    <div class="login-bg-art"></div>
+    <div class="login-left-content">
+      <div class="login-brand mb-4">
+        <div class="brand-icon-lg mb-3"><i class="bi bi-recycle"></i></div>
+        <h1 class="text-white fw-bold">CollecteOpt</h1>
+        <p class="text-white opacity-75 fs-5">Agadir — Système de Gestion</p>
+      </div>
+      <div class="login-features">
+        <div class="feature-item"><i class="bi bi-check-circle-fill text-success me-2"></i>Optimisation VRP intelligente</div>
+        <div class="feature-item"><i class="bi bi-check-circle-fill text-success me-2"></i>Carte interactive temps réel</div>
+        <div class="feature-item"><i class="bi bi-check-circle-fill text-success me-2"></i>Réduction CO2 jusqu'à 30%</div>
+        <div class="feature-item"><i class="bi bi-check-circle-fill text-success me-2"></i>Alertes et notifications</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel - Form -->
+  <div class="login-right">
+    <div class="login-form-wrapper">
+      <!-- Mobile logo -->
+      <div class="d-lg-none text-center mb-4">
+        <div class="brand-icon mb-2"><i class="bi bi-recycle"></i></div>
+        <h2 class="fw-bold">CollecteOpt Agadir</h2>
+      </div>
+
+      <!-- Tabs -->
+      <ul class="nav nav-pills nav-justified mb-4 login-tabs" id="authTab">
+        <li class="nav-item">
+          <button class="nav-link active" id="loginTab" onclick="showLogin()">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Connexion
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" id="registerTab" onclick="showRegister()">
+            <i class="bi bi-person-plus me-1"></i>Inscription
+          </button>
+        </li>
+      </ul>
+
+      <!-- Alert -->
+      <div id="authAlert" class="alert d-none" role="alert"></div>
+
+      <!-- Login Form -->
+      <div id="loginForm">
+        <h4 class="mb-1 fw-bold">Bon retour ! 👋</h4>
+        <p class="text-muted mb-4">Connectez-vous à votre espace</p>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Identifiant ou Email</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input type="text" class="form-control" id="loginUsername" placeholder="admin" autocomplete="username">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Mot de passe</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+            <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('loginPassword', this)">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button class="btn btn-primary w-100 btn-lg mt-2" onclick="doLogin()" id="loginBtn">
+          <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
+        </button>
+        <div class="text-center mt-3">
+          <small class="text-muted">Démo: <kbd>admin</kbd> / <kbd>admin123</kbd></small>
+        </div>
+      </div>
+
+      <!-- Register Form -->
+      <div id="registerForm" class="d-none">
+        <h4 class="mb-1 fw-bold">Créer un compte</h4>
+        <p class="text-muted mb-4">Remplissez les informations ci-dessous</p>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Nom d'utilisateur</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input type="text" class="form-control" id="regUsername" placeholder="nom.prenom">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Email</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input type="email" class="form-control" id="regEmail" placeholder="email@exemple.ma">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Mot de passe</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password" class="form-control" id="regPassword" placeholder="min. 6 caractères">
+          </div>
+        </div>
+        <button class="btn btn-success w-100 btn-lg mt-2" onclick="doRegister()" id="regBtn">
+          <i class="bi bi-person-plus me-2"></i>Créer le compte
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const API = '';
+
+  function showLogin() {
+    document.getElementById('loginForm').classList.remove('d-none');
+    document.getElementById('registerForm').classList.add('d-none');
+    document.getElementById('loginTab').classList.add('active');
+    document.getElementById('registerTab').classList.remove('active');
+  }
+
+  function showRegister() {
+    document.getElementById('loginForm').classList.add('d-none');
+    document.getElementById('registerForm').classList.remove('d-none');
+    document.getElementById('loginTab').classList.remove('active');
+    document.getElementById('registerTab').classList.add('active');
+  }
+
+  function togglePwd(id, btn) {
+    const input = document.getElementById(id);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'bi bi-eye-slash';
+    } else {
+      input.type = 'password';
+      icon.className = 'bi bi-eye';
+    }
+  }
+
+  function showAlert(msg, type = 'danger') {
+    const el = document.getElementById('authAlert');
+    el.className = `alert alert-${type}`;
+    el.innerHTML = `<i class="bi bi-${type === 'danger' ? 'exclamation-triangle' : 'check-circle'} me-2"></i>${msg}`;
+    el.classList.remove('d-none');
+  }
+
+  async function doLogin() {
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!username || !password) { showAlert('Veuillez remplir tous les champs'); return; }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Connexion...';
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      window.location.href = '/dashboard';
+    } catch (e) {
+      showAlert(e.message);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Se connecter';
+    }
+  }
+
+  async function doRegister() {
+    const username = document.getElementById('regUsername').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    if (!username || !email || !password) { showAlert('Veuillez remplir tous les champs'); return; }
+
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showAlert('Compte créé ! Vous pouvez maintenant vous connecter.', 'success');
+      showLogin();
+    } catch (e) {
+      showAlert(e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // Enter key
+  document.addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+      if (!document.getElementById('loginForm').classList.contains('d-none')) doLogin();
+      else doRegister();
+    }
+  });
+
+  // Redirect if already logged in
+  if (localStorage.getItem('access_token')) window.location.href = '/dashboard';
+</script>
+</body>
+</html>
